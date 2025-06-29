@@ -38,19 +38,39 @@ class FoodTournamentGame {
   // 게임 시작
   async startGame() {
     try {
+      console.log("Starting game with API URL:", this.apiBaseUrl);
+
+      // API 헬스 체크 먼저 수행
+      const healthCheck = await this.checkApiHealth();
+      if (!healthCheck) {
+        throw new Error("API server is not responding");
+      }
+
       // 새로운 게임 세션 생성
-      const response = await fetch(`${this.apiBaseUrl}/game/session`, {
+      const sessionUrl = `${this.apiBaseUrl}/game/session`;
+      console.log("Creating game session at:", sessionUrl);
+
+      const response = await fetch(sessionUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
       });
 
+      console.log("Session response status:", response.status);
+      console.log("Session response ok:", response.ok);
+
       if (!response.ok) {
-        throw new Error("Failed to create game session");
+        const errorText = await response.text();
+        console.error("Session creation failed:", errorText);
+        throw new Error(
+          `Failed to create game session: ${response.status} ${errorText}`
+        );
       }
 
       const result = await response.json();
+      console.log("Session creation result:", result);
+
       if (!result.success) {
         throw new Error(result.error || "Failed to create game session");
       }
@@ -59,11 +79,43 @@ class FoodTournamentGame {
       this.sessionId = this.gameSession.id;
       this.currentRound = 0;
 
+      console.log("Game session created successfully:", this.sessionId);
       this.showScreen("game");
       await this.nextRound();
     } catch (error) {
       console.error("Error starting game:", error);
-      alert("게임을 시작할 수 없습니다. 다시 시도해주세요.");
+      console.error("Error details:", error.message);
+      console.error("API Base URL:", this.apiBaseUrl);
+
+      // 더 상세한 에러 메시지 제공
+      let errorMessage = "게임을 시작할 수 없습니다.\n\n";
+      errorMessage += `🔍 에러 상세 정보:\n`;
+      errorMessage += `• 에러 메시지: ${error.message}\n`;
+      errorMessage += `• API URL: ${this.apiBaseUrl}\n`;
+      errorMessage += `• 현재 호스트: ${window.location.hostname}\n`;
+      errorMessage += `• 프로토콜: ${window.location.protocol}\n\n`;
+
+      if (error.message.includes("API server is not responding")) {
+        errorMessage += "❌ 서버 연결 실패\n";
+        errorMessage += "• API 서버가 응답하지 않습니다.\n";
+      } else if (error.message.includes("Failed to fetch")) {
+        errorMessage += "❌ 네트워크 연결 실패\n";
+        errorMessage += "• 인터넷 연결을 확인해주세요.\n";
+        errorMessage += "• 방화벽이나 보안 설정을 확인해주세요.\n";
+      } else if (error.message.includes("NetworkError")) {
+        errorMessage += "❌ 네트워크 에러\n";
+        errorMessage += "• CORS 정책 또는 네트워크 차단 문제일 수 있습니다.\n";
+      } else if (error.message.includes("TypeError")) {
+        errorMessage += "❌ 타입 에러\n";
+        errorMessage += "• API 응답 형식에 문제가 있습니다.\n";
+      }
+
+      errorMessage += "\n💡 해결 방법:\n";
+      errorMessage += "1. 인터넷 연결 확인\n";
+      errorMessage += "2. 앱 재시작\n";
+      errorMessage += "3. 잠시 후 다시 시도\n";
+
+      alert(errorMessage);
     }
   }
 
@@ -214,7 +266,28 @@ class FoodTournamentGame {
       }
     } catch (error) {
       console.error("Error submitting choice:", error);
-      alert("선택을 처리할 수 없습니다. 다시 시도해주세요.");
+
+      let errorMessage = "선택을 처리할 수 없습니다.\n\n";
+      errorMessage += `🔍 에러 상세 정보:\n`;
+      errorMessage += `• 에러 메시지: ${error.message}\n`;
+      errorMessage += `• API URL: ${this.apiBaseUrl}\n`;
+      errorMessage += `• 세션 ID: ${this.sessionId}\n`;
+      errorMessage += `• 현재 라운드: ${this.currentRound}\n\n`;
+
+      if (error.message.includes("Failed to fetch")) {
+        errorMessage += "❌ 네트워크 연결 실패\n";
+        errorMessage += "• 인터넷 연결을 확인해주세요.\n";
+      } else if (error.message.includes("Failed to submit choice")) {
+        errorMessage += "❌ 서버 처리 실패\n";
+        errorMessage += "• 서버에서 선택을 처리하지 못했습니다.\n";
+      }
+
+      errorMessage += "\n💡 해결 방법:\n";
+      errorMessage += "1. 인터넷 연결 확인\n";
+      errorMessage += "2. 게임 재시작\n";
+      errorMessage += "3. 잠시 후 다시 시도\n";
+
+      alert(errorMessage);
     }
   }
 
@@ -369,19 +442,52 @@ class FoodTournamentGame {
       restaurantsContainer.classList.remove("hidden");
     } catch (error) {
       console.error("Error finding nearby restaurants:", error);
-      let errorMessage = "음식점 검색에 실패했습니다.";
+
+      let errorMessage = "음식점 검색에 실패했습니다.\n\n";
+      errorMessage += `🔍 에러 상세 정보:\n`;
+      errorMessage += `• 에러 메시지: ${error.message}\n`;
+      errorMessage += `• API URL: ${this.apiBaseUrl}\n`;
+      errorMessage += `• 검색 음식: ${this.winnerFood?.name || "N/A"}\n\n`;
 
       if (error.code === error.PERMISSION_DENIED) {
-        errorMessage =
-          "위치 정보 접근이 거부되었습니다. 브라우저 설정을 확인해주세요.";
+        errorMessage += "❌ 위치 권한 거부\n";
+        errorMessage += "• 위치 정보 접근이 거부되었습니다.\n";
+        errorMessage += "• 브라우저 설정에서 위치 권한을 허용해주세요.\n";
       } else if (error.code === error.POSITION_UNAVAILABLE) {
-        errorMessage = "위치 정보를 사용할 수 없습니다.";
+        errorMessage += "❌ 위치 정보 불가\n";
+        errorMessage += "• 위치 정보를 사용할 수 없습니다.\n";
+        errorMessage += "• GPS가 꺼져있거나 실내에 있을 수 있습니다.\n";
       } else if (error.code === error.TIMEOUT) {
-        errorMessage = "위치 정보 요청이 시간 초과되었습니다.";
+        errorMessage += "❌ 위치 요청 시간 초과\n";
+        errorMessage += "• 위치 정보 요청이 시간 초과되었습니다.\n";
+        errorMessage += "• 네트워크 상태를 확인해주세요.\n";
+      } else if (error.message.includes("Failed to fetch")) {
+        errorMessage += "❌ 네트워크 연결 실패\n";
+        errorMessage += "• 음식점 검색 API 호출에 실패했습니다.\n";
+        errorMessage += "• 인터넷 연결을 확인해주세요.\n";
+      } else {
+        errorMessage += "❌ 알 수 없는 오류\n";
+        errorMessage += "• 예상치 못한 오류가 발생했습니다.\n";
       }
 
-      locationStatus.textContent = errorMessage;
+      errorMessage += "\n💡 해결 방법:\n";
+      errorMessage += "1. 위치 권한 허용\n";
+      errorMessage += "2. GPS 활성화\n";
+      errorMessage += "3. 인터넷 연결 확인\n";
+      errorMessage += "4. 잠시 후 다시 시도\n";
+
+      locationStatus.textContent =
+        error.code === error.PERMISSION_DENIED
+          ? "위치 권한이 거부되었습니다."
+          : error.code === error.POSITION_UNAVAILABLE
+          ? "위치 정보를 사용할 수 없습니다."
+          : error.code === error.TIMEOUT
+          ? "위치 요청이 시간 초과되었습니다."
+          : "음식점 검색에 실패했습니다.";
       locationStatus.className = "location-status error";
+
+      // 상세 에러 정보를 팝업으로 표시
+      alert(errorMessage);
 
       // 에러 시에도 위치 정보는 숨기지 않음
       if (!locationInfo.classList.contains("hidden")) {
@@ -622,6 +728,55 @@ class FoodTournamentGame {
 // 게임 인스턴스 생성 (전역 접근 가능)
 const game = new FoodTournamentGame();
 window.hungerGame = game; // Expo 앱에서 접근할 수 있도록 전역 변수로 설정
+
+// 앱 환경에서 쉽게 접근할 수 있는 전역 디버그 함수들
+window.debugGame = {
+  // 현재 게임 상태 확인
+  getGameState: () => {
+    return {
+      apiBaseUrl: game.apiBaseUrl,
+      sessionId: game.sessionId,
+      currentRound: game.currentRound,
+      totalRounds: game.totalRounds,
+      gameSession: game.gameSession,
+      currentOptions: game.currentOptions,
+      winnerFood: game.winnerFood,
+    };
+  },
+
+  // API 연결 테스트
+  testApiConnection: async () => {
+    console.log("Testing API connection...");
+    console.log("API Base URL:", game.apiBaseUrl);
+
+    try {
+      const healthCheck = await game.checkApiHealth();
+      console.log("Health check result:", healthCheck);
+
+      if (healthCheck) {
+        console.log("✅ API connection successful!");
+        return true;
+      } else {
+        console.log("❌ API health check failed");
+        return false;
+      }
+    } catch (error) {
+      console.error("❌ API connection error:", error);
+      return false;
+    }
+  },
+
+  // 위치 정보 확인
+  checkLocation: () => {
+    game.debugLocationInfo();
+  },
+
+  // 강제 게임 시작 (디버그용)
+  forceStartGame: () => {
+    console.log("Force starting game...");
+    game.startGame();
+  },
+};
 
 // DOM 로드 완료 후 이벤트 리스너 등록
 document.addEventListener("DOMContentLoaded", async () => {
