@@ -20,19 +20,26 @@ class FoodTournamentGame {
       return window.HUNGER_GAME_API_URL;
     }
 
-    // 2. 현재 호스트가 localhost가 아니면 같은 호스트 사용
-    if (
-      window.location.hostname !== "localhost" &&
-      window.location.hostname !== "127.0.0.1"
-    ) {
+    // 2. 현재 호스트가 Cloudflare Workers 배포 도메인이면 같은 호스트 사용
+    if (window.location.hostname === "hunger-game.natureweb.workers.dev") {
       const apiUrl = `${window.location.protocol}//${window.location.host}`;
-      console.log("Using same host for API:", apiUrl);
+      console.log("Using Cloudflare Workers host for API:", apiUrl);
       return apiUrl;
     }
 
-    // 3. 개발 환경 기본값 (상대 경로)
-    console.log("Using relative path for API");
-    return "";
+    // 3. 로컬 개발 환경 (localhost)
+    if (
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+    ) {
+      console.log("Using relative path for local development");
+      return "";
+    }
+
+    // 4. 기본값: Cloudflare Workers 배포 URL (앱 환경 등)
+    const defaultApiUrl = "https://hunger-game.natureweb.workers.dev";
+    console.log("Using default Cloudflare Workers API URL:", defaultApiUrl);
+    return defaultApiUrl;
   }
 
   // 게임 시작
