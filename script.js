@@ -566,7 +566,7 @@ class FoodTournamentGame {
   // API 헬스 체크
   async checkApiHealth() {
     try {
-      const response = await fetch(`${this.apiBaseUrl}/health`);
+      const response = await fetch(`${this.apiBaseUrl}/api/health`);
       const result = await response.json();
       console.log("API Health:", result);
       return result.status === "OK";

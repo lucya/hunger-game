@@ -3,12 +3,12 @@
 // export dynamically through wrangler, or we can potentially let users directly
 // add them as a sort of "plugin" system.
 
-import ENTRY, { __INTERNAL_WRANGLER_MIDDLEWARE__ } from "/Users/adele/Documents/Dev/study/hunger-game/.wrangler/tmp/bundle-RUkwJG/middleware-insertion-facade.js";
+import ENTRY, { __INTERNAL_WRANGLER_MIDDLEWARE__ } from "/Users/adele/Documents/Dev/study/hunger-game/.wrangler/tmp/bundle-4WHswG/middleware-insertion-facade.js";
 import { __facade_invoke__, __facade_register__, Dispatcher } from "/Users/adele/.nvm/versions/node/v22.16.0/lib/node_modules/wrangler/templates/middleware/common.ts";
-import type { WorkerEntrypointConstructor } from "/Users/adele/Documents/Dev/study/hunger-game/.wrangler/tmp/bundle-RUkwJG/middleware-insertion-facade.js";
+import type { WorkerEntrypointConstructor } from "/Users/adele/Documents/Dev/study/hunger-game/.wrangler/tmp/bundle-4WHswG/middleware-insertion-facade.js";
 
 // Preserve all the exports from the worker
-export * from "/Users/adele/Documents/Dev/study/hunger-game/.wrangler/tmp/bundle-RUkwJG/middleware-insertion-facade.js";
+export * from "/Users/adele/Documents/Dev/study/hunger-game/.wrangler/tmp/bundle-4WHswG/middleware-insertion-facade.js";
 
 class __Facade_ScheduledController__ implements ScheduledController {
 	readonly #noRetry: ScheduledController["noRetry"];
