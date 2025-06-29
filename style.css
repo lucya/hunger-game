@@ -1,0 +1,550 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(255, 183, 77, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 107, 107, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(132, 250, 176, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+  color: white;
+}
+
+.header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  font-weight: 300;
+}
+
+.game-container {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 25px;
+  box-shadow:
+    0 25px 50px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+  min-height: 500px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Screen Management */
+.screen {
+  display: none;
+  padding: 40px;
+  text-align: center;
+}
+
+.screen.active {
+  display: block;
+}
+
+/* Start Screen */
+.start-content {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.game-info {
+  margin-bottom: 40px;
+}
+
+.game-info h2 {
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.game-info ul {
+  text-align: left;
+  list-style: none;
+  padding: 0;
+}
+
+.game-info li {
+  padding: 10px 0;
+  padding-left: 30px;
+  position: relative;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.game-info li::before {
+  content: "✨";
+  position: absolute;
+  left: 0;
+  top: 10px;
+}
+
+.start-button {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  color: white;
+  border: none;
+  padding: 18px 45px;
+  border-radius: 50px;
+  font-size: 1.3rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow:
+    0 15px 30px rgba(255, 107, 107, 0.4),
+    0 5px 15px rgba(255, 142, 83, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.start-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.start-button:hover::before {
+  left: 100%;
+}
+
+.start-button:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow:
+    0 20px 40px rgba(255, 107, 107, 0.5),
+    0 10px 20px rgba(255, 142, 83, 0.3);
+}
+
+/* Game Screen */
+.progress-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 40px;
+  padding: 0 20px;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-right: 20px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  width: 10%;
+  transition: width 0.5s ease;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+}
+
+.round-text {
+  font-weight: 600;
+  color: #666;
+  font-size: 1rem;
+}
+
+.vs-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.food-option {
+  flex: 1;
+  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 20px;
+  padding: 35px 25px;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 3px solid transparent;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.food-option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg,
+      rgba(255, 107, 107, 0.1) 0%,
+      rgba(255, 142, 83, 0.1) 50%,
+      rgba(132, 250, 176, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.food-option::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.food-option:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow:
+    0 25px 50px rgba(0, 0, 0, 0.15),
+    0 10px 20px rgba(255, 107, 107, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  border-color: #ff6b6b;
+}
+
+.food-option:hover::before {
+  opacity: 1;
+}
+
+.food-option:hover::after {
+  opacity: 1;
+}
+
+.food-emoji {
+  font-size: 4.5rem;
+  margin-bottom: 20px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1));
+  position: relative;
+  z-index: 2;
+}
+
+.food-option:hover .food-emoji {
+  transform: scale(1.15) rotate(5deg);
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2));
+}
+
+.food-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #2d3748;
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.food-desc {
+  color: #4a5568;
+  font-size: 1rem;
+  line-height: 1.5;
+  position: relative;
+  z-index: 2;
+  font-weight: 400;
+}
+
+.vs-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+}
+
+.vs-text {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  color: white;
+  padding: 12px 18px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 1rem;
+  box-shadow: 0 8px 20px rgba(255, 107, 107, 0.4);
+  animation: pulse-vs 2s ease-in-out infinite;
+}
+
+@keyframes pulse-vs {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 8px 20px rgba(255, 107, 107, 0.4);
+  }
+
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 12px 25px rgba(255, 107, 107, 0.6);
+  }
+}
+
+/* Result Screen */
+.result-content {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.result-content h2 {
+  font-size: 2rem;
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.final-food {
+  background: linear-gradient(145deg,
+      rgba(255, 107, 107, 0.1) 0%,
+      rgba(255, 142, 83, 0.1) 50%,
+      rgba(132, 250, 176, 0.1) 100%);
+  border-radius: 25px;
+  padding: 45px;
+  margin-bottom: 35px;
+  border: 3px solid #ff6b6b;
+  box-shadow:
+    0 20px 40px rgba(255, 107, 107, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  position: relative;
+  overflow: hidden;
+}
+
+.final-food::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% {
+    opacity: 0.3;
+    transform: rotate(0deg);
+  }
+
+  50% {
+    opacity: 0.6;
+    transform: rotate(180deg);
+  }
+}
+
+.final-emoji {
+  font-size: 5rem;
+  margin-bottom: 20px;
+  animation: bounce 1s ease-in-out;
+}
+
+.final-name {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.final-desc {
+  font-size: 1.1rem;
+  color: #666;
+}
+
+.restart-button {
+  background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+  color: white;
+  border: none;
+  padding: 18px 45px;
+  border-radius: 50px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow:
+    0 15px 30px rgba(132, 250, 176, 0.4),
+    0 5px 15px rgba(143, 211, 244, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.restart-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.restart-button:hover::before {
+  left: 100%;
+}
+
+.restart-button:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow:
+    0 20px 40px rgba(132, 250, 176, 0.5),
+    0 10px 20px rgba(143, 211, 244, 0.3);
+}
+
+/* Animations */
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  40%, 43% {
+    transform: translate3d(0, -30px, 0);
+  }
+
+  70% {
+    transform: translate3d(0, -15px, 0);
+  }
+
+  90% {
+    transform: translate3d(0, -4px, 0);
+  }
+}
+
+.food-option.selected {
+  animation: pulse 0.6s ease-in-out;
+  border-color: #667eea;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding: 15px;
+  }
+
+  .header h1 {
+    font-size: 2rem;
+  }
+
+  .vs-container {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .food-option {
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+
+  .food-emoji {
+    font-size: 3rem;
+  }
+
+  .screen {
+    padding: 30px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header h1 {
+    font-size: 1.8rem;
+  }
+
+  .food-emoji {
+    font-size: 2.5rem;
+  }
+
+  .final-emoji {
+    font-size: 4rem;
+  }
+
+  .food-name {
+    font-size: 1.3rem;
+  }
+
+  .final-name {
+    font-size: 1.8rem;
+  }
+}
+
+/* 단계별 음식 옵션 스타일 */
+.food-option.phase-1,
+.food-option.phase-2,
+.food-option.phase-3 {
+  border-left: 4px solid #ff6b6b;
+}
+
+
+
+
+
+/* 최종 결과 스타일 개선 */
+.final-stats {
+  margin-top: 25px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 249, 250, 0.9) 100%);
+  border-radius: 15px;
+  border-left: 4px solid #ff6b6b;
+  position: relative;
+  z-index: 2;
+}
+
+.final-stats p {
+  margin: 8px 0;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #2d3748;
+  text-align: center;
+}
