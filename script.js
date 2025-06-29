@@ -1,12 +1,38 @@
 // Cloudflare Workers API 기반 음식 토너먼트 게임
 class FoodTournamentGame {
   constructor() {
-    this.apiBaseUrl = "/api"; // Cloudflare Workers API 엔드포인트
+    this.apiBaseUrl = this.getApiBaseUrl(); // 동적 API 엔드포인트 설정
     this.sessionId = null;
     this.currentRound = 0;
     this.totalRounds = 20;
     this.currentOptions = [];
     this.gameSession = null;
+  }
+
+  // API 기본 URL 결정
+  getApiBaseUrl() {
+    // 1. 전역 변수에서 API URL이 설정되어 있으면 사용 (Expo 앱에서 설정)
+    if (window.HUNGER_GAME_API_URL) {
+      console.log(
+        "Using API URL from global variable:",
+        window.HUNGER_GAME_API_URL
+      );
+      return window.HUNGER_GAME_API_URL;
+    }
+
+    // 2. 현재 호스트가 localhost가 아니면 같은 호스트 사용
+    if (
+      window.location.hostname !== "localhost" &&
+      window.location.hostname !== "127.0.0.1"
+    ) {
+      const apiUrl = `${window.location.protocol}//${window.location.host}`;
+      console.log("Using same host for API:", apiUrl);
+      return apiUrl;
+    }
+
+    // 3. 개발 환경 기본값 (상대 경로)
+    console.log("Using relative path for API");
+    return "";
   }
 
   // 게임 시작
@@ -434,6 +460,22 @@ class FoodTournamentGame {
     window.expoAccuracy = accuracy;
 
     console.log("Location successfully set from Expo");
+    return true;
+  }
+
+  // Expo 앱에서 API URL을 설정하는 메서드
+  setApiUrlFromExpo(apiUrl) {
+    console.log("Setting API URL from Expo:", apiUrl);
+
+    if (!apiUrl || typeof apiUrl !== "string") {
+      console.error("Invalid API URL from Expo:", apiUrl);
+      return false;
+    }
+
+    window.HUNGER_GAME_API_URL = apiUrl;
+    this.apiBaseUrl = apiUrl;
+
+    console.log("API URL successfully set from Expo");
     return true;
   }
 
