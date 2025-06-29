@@ -69,6 +69,29 @@
               <h3 id="final-name" class="final-name">피자</h3>
               <p id="final-desc" class="final-desc">오늘은 이걸로 결정!</p>
             </div>
+
+            <!-- 근처 음식점 찾기 섹션 -->
+            <div class="nearby-section">
+              <button id="find-nearby-btn" class="find-nearby-button">
+                📍 내 근처 음식점 찾기
+              </button>
+              <div id="location-info" class="location-info hidden">
+                <div class="current-location">
+                  <span class="location-icon">📍</span>
+                  <span id="current-address" class="current-address"
+                    >현재 위치를 확인하는 중...</span
+                  >
+                </div>
+              </div>
+              <div id="location-status" class="location-status"></div>
+              <div
+                id="restaurants-container"
+                class="restaurants-container hidden">
+                <h3 class="restaurants-title">근처 음식점 (1.5km 이내)</h3>
+                <div id="restaurants-list" class="restaurants-list"></div>
+              </div>
+            </div>
+
             <button id="restart-btn" class="restart-button">
               다시 하기 🔄
             </button>
@@ -77,6 +100,6 @@
       </div>
     </div>
 
-    <script type="module" src="script.js"></script>
+    <script src="script.js"></script>
   </body>
 </html>

@@ -548,3 +548,310 @@ body::before {
   color: #2d3748;
   text-align: center;
 }
+
+/* 근처 음식점 찾기 섹션 */
+.nearby-section {
+  margin: 30px 0;
+  padding: 20px 0;
+  border-top: 1px solid #e0e0e0;
+}
+
+.find-nearby-button {
+  background: linear-gradient(135deg, #2196F3 0%, #21CBF3 100%);
+  color: white;
+  border: none;
+  padding: 15px 35px;
+  border-radius: 50px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow:
+    0 10px 25px rgba(33, 150, 243, 0.3),
+    0 5px 15px rgba(33, 203, 243, 0.2);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 15px;
+}
+
+.find-nearby-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.find-nearby-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.find-nearby-button:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.find-nearby-button:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow:
+    0 15px 35px rgba(33, 150, 243, 0.4),
+    0 8px 20px rgba(33, 203, 243, 0.3);
+}
+
+/* 현재 위치 정보 */
+.location-info {
+  margin: 15px 0;
+  padding: 12px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
+  border: 1px solid #d1e7ff;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.location-info.hidden {
+  display: none;
+}
+
+.current-location {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.location-icon {
+  font-size: 16px;
+}
+
+.current-address {
+  font-size: 14px;
+  color: #2c3e50;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* 위치 상태 메시지 */
+.location-status {
+  margin: 10px 0;
+  padding: 8px 15px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.location-status.loading {
+  background: #e3f2fd;
+  color: #1976d2;
+  border: 1px solid #bbdefb;
+}
+
+.location-status.success {
+  background: #e8f5e8;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+
+.location-status.error {
+  background: #ffebee;
+  color: #d32f2f;
+  border: 1px solid #ffcdd2;
+}
+
+/* 음식점 컨테이너 */
+.restaurants-container {
+  margin-top: 20px;
+  text-align: left;
+}
+
+.restaurants-container.hidden {
+  display: none;
+}
+
+.restaurants-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.restaurants-list {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+
+/* 음식점 아이템 */
+.restaurant-item {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.restaurant-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border-color: #2196F3;
+}
+
+.restaurant-info {
+  margin-bottom: 12px;
+}
+
+.restaurant-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.restaurant-category {
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 3px;
+}
+
+.restaurant-address {
+  font-size: 0.85rem;
+  color: #888;
+  line-height: 1.4;
+}
+
+.restaurant-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.restaurant-phone,
+.restaurant-link,
+.restaurant-map-btn {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.restaurant-phone {
+  background: #4caf50;
+  color: white;
+}
+
+.restaurant-phone:hover {
+  background: #45a049;
+  transform: scale(1.05);
+}
+
+.restaurant-link {
+  background: #ff9800;
+  color: white;
+}
+
+.restaurant-link:hover {
+  background: #f57c00;
+  transform: scale(1.05);
+}
+
+.restaurant-map-btn {
+  background: #2196f3;
+  color: white;
+}
+
+.restaurant-map-btn:hover {
+  background: #1976d2;
+  transform: scale(1.05);
+}
+
+/* 음식점이 없을 때 */
+.no-restaurants {
+  text-align: center;
+  padding: 30px 20px;
+  color: #666;
+}
+
+.no-restaurants p {
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+/* 스크롤바 스타일링 */
+.restaurants-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.restaurants-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.restaurants-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.restaurants-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 모바일 반응형 - 음식점 리스트 */
+@media (max-width: 768px) {
+  .nearby-section {
+    margin: 20px 0;
+    padding: 15px 0;
+  }
+
+  .find-nearby-button {
+    padding: 12px 25px;
+    font-size: 1rem;
+  }
+
+  .restaurants-list {
+    max-height: 300px;
+  }
+
+  .restaurant-item {
+    padding: 12px;
+  }
+
+  .restaurant-actions {
+    gap: 6px;
+  }
+
+  .restaurant-phone,
+  .restaurant-link,
+  .restaurant-map-btn {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .restaurant-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .restaurant-phone,
+  .restaurant-link,
+  .restaurant-map-btn {
+    text-align: center;
+    justify-content: center;
+  }
+}
