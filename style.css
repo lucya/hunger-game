@@ -549,6 +549,109 @@ body::before {
   text-align: center;
 }
 
+/* Winner Display Styles */
+.winner-food {
+  margin: 30px 0;
+}
+
+.winner-display {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.95) 100%);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+  border: 2px solid rgba(102, 126, 234, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.winner-display::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.winner-emoji {
+  font-size: 5rem;
+  margin-bottom: 15px;
+  text-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.winner-name {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 10px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.winner-description {
+  font-size: 1.1rem;
+  color: #718096;
+  line-height: 1.6;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* Game Stats Styles */
+.game-stats {
+  margin: 30px 0;
+  padding: 25px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 249, 250, 0.9) 100%);
+  border-radius: 15px;
+  border-left: 4px solid #ff6b6b;
+}
+
+.stats-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 20px;
+}
+
+.top-foods-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.food-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 15px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.food-item .rank {
+  font-weight: 700;
+  color: #667eea;
+  min-width: 35px;
+}
+
+.food-item .food-emoji {
+  font-size: 1.5rem;
+  margin: 0 10px;
+}
+
+.food-item .food-name {
+  flex: 1;
+  text-align: left;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.food-item .food-count {
+  font-size: 0.9rem;
+  color: #718096;
+  font-weight: 500;
+}
+
 /* 근처 음식점 찾기 섹션 */
 .nearby-section {
   margin: 30px 0;

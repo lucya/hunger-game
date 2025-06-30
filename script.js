@@ -178,26 +178,37 @@ class FoodTournamentGame {
       document.getElementById("result-screen").classList.add("active");
 
       // 우승자 표시
-      document.getElementById("winner-name").textContent = winner.name;
-      document.getElementById("winner-emoji").textContent = winner.emoji;
-      document.getElementById("winner-description").textContent =
-        winner.description;
+      const winnerFoodElement = document.getElementById("winner-food");
+      if (winnerFoodElement) {
+        winnerFoodElement.innerHTML = `
+          <div class="winner-display">
+            <div class="winner-emoji">${winner.emoji}</div>
+            <div class="winner-name">${winner.name}</div>
+            <div class="winner-description">${winner.description}</div>
+          </div>
+        `;
+      }
 
       // 상위 음식들 표시
-      const topFoodsList = document.getElementById("top-foods-list");
-      topFoodsList.innerHTML = "";
+      const gameStatsElement = document.getElementById("game-stats");
+      if (gameStatsElement && topFoods.length > 0) {
+        let statsHTML =
+          '<div class="stats-title">선택 통계</div><div class="top-foods-list">';
 
-      topFoods.forEach((item, index) => {
-        const foodItem = document.createElement("div");
-        foodItem.className = "food-item";
-        foodItem.innerHTML = `
-          <span class="rank">${index + 1}위</span>
-          <span class="food-emoji">${item.food.emoji}</span>
-          <span class="food-name">${item.food.name}</span>
-          <span class="food-count">${item.count}번 선택</span>
-        `;
-        topFoodsList.appendChild(foodItem);
-      });
+        topFoods.forEach((item, index) => {
+          statsHTML += `
+            <div class="food-item">
+              <span class="rank">${index + 1}위</span>
+              <span class="food-emoji">${item.food.emoji}</span>
+              <span class="food-name">${item.food.name}</span>
+              <span class="food-count">${item.count}번 선택</span>
+            </div>
+          `;
+        });
+
+        statsHTML += "</div>";
+        gameStatsElement.innerHTML = statsHTML;
+      }
     } catch (error) {
       console.error("Failed to show result:", error);
       this.showError(`결과 표시 실패: ${error.message}`);
@@ -211,7 +222,9 @@ class FoodTournamentGame {
       const restaurantsContainer = document.getElementById("restaurants-list");
       const locationInfo = document.getElementById("location-info");
 
-      statusElement.textContent = "위치 정보를 가져오는 중...";
+      if (statusElement) {
+        statusElement.textContent = "위치 정보를 가져오는 중...";
+      }
       statusElement.className = "status loading";
 
       // 위치 정보 가져오기
@@ -252,16 +265,20 @@ class FoodTournamentGame {
       if (restaurantsPromise.status === "fulfilled") {
         const restaurants = restaurantsPromise.value;
         this.displayRestaurants(restaurants);
-        statusElement.textContent = `${restaurants.length}개의 음식점을 찾았습니다!`;
-        statusElement.className = "status success";
+        if (statusElement) {
+          statusElement.textContent = `${restaurants.length}개의 음식점을 찾았습니다!`;
+          statusElement.className = "status success";
+        }
       } else {
         throw restaurantsPromise.reason;
       }
     } catch (error) {
       console.error("Failed to find nearby restaurants:", error);
       const statusElement = document.getElementById("location-status");
-      statusElement.textContent = this.getLocationErrorMessage(error);
-      statusElement.className = "status error";
+      if (statusElement) {
+        statusElement.textContent = this.getLocationErrorMessage(error);
+        statusElement.className = "status error";
+      }
     }
   }
 
@@ -466,32 +483,42 @@ class FoodTournamentGame {
 
   // 옵션 표시
   displayOptions() {
-    const optionsContainer = document.getElementById("options-container");
-    const roundElement = document.getElementById("current-round");
+    const roundElement = document.getElementById("round-info");
     const progressElement = document.getElementById("progress");
+    const option1Element = document.getElementById("option1");
+    const option2Element = document.getElementById("option2");
 
     // 라운드 정보 업데이트
-    roundElement.textContent = `${this.currentRound + 1} / ${this.totalRounds}`;
+    if (roundElement) {
+      roundElement.textContent = `${this.currentRound + 1} / ${
+        this.totalRounds
+      }`;
+    }
 
     // 진행률 업데이트
     const progressPercent = (this.currentRound / this.totalRounds) * 100;
-    progressElement.style.width = `${progressPercent}%`;
+    if (progressElement) {
+      progressElement.style.width = `${progressPercent}%`;
+    }
 
-    // 옵션 버튼 생성
-    optionsContainer.innerHTML = "";
+    // 옵션 표시
+    if (this.currentOptions.length >= 2) {
+      if (option1Element) {
+        option1Element.innerHTML = `
+          <div class="food-emoji">${this.currentOptions[0].emoji}</div>
+          <div class="food-name">${this.currentOptions[0].name}</div>
+          <div class="food-desc">${this.currentOptions[0].description}</div>
+        `;
+      }
 
-    this.currentOptions.forEach((food) => {
-      const button = document.createElement("button");
-      button.className = "food-option";
-      button.innerHTML = `
-        <div class="food-emoji">${food.emoji}</div>
-        <div class="food-name">${food.name}</div>
-        <div class="food-description">${food.description}</div>
-      `;
-
-      button.addEventListener("click", () => this.makeChoice(food));
-      optionsContainer.appendChild(button);
-    });
+      if (option2Element) {
+        option2Element.innerHTML = `
+          <div class="food-emoji">${this.currentOptions[1].emoji}</div>
+          <div class="food-name">${this.currentOptions[1].name}</div>
+          <div class="food-desc">${this.currentOptions[1].description}</div>
+        `;
+      }
+    }
   }
 
   // 게임 재시작
@@ -596,6 +623,12 @@ function restartGame() {
 
 function findNearbyRestaurants() {
   game.findNearbyRestaurants();
+}
+
+function selectOption(optionIndex) {
+  if (game.currentOptions && game.currentOptions[optionIndex]) {
+    game.makeChoice(game.currentOptions[optionIndex]);
+  }
 }
 
 // Expo 앱과의 연동을 위한 전역 객체
