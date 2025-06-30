@@ -184,7 +184,9 @@ class FoodTournamentGame {
           <div class="winner-display">
             <div class="winner-emoji">${winner.emoji}</div>
             <div class="winner-name">${winner.name}</div>
-            <div class="winner-description">${winner.description}</div>
+            <div class="winner-description">${
+              winner.desc || winner.description || ""
+            }</div>
           </div>
         `;
       }
@@ -233,13 +235,13 @@ class FoodTournamentGame {
 
       console.log("Position obtained:", { latitude, longitude });
 
-      // 병렬로 주소 변환과 음식점 검색 실행
+      // 음식점 검색과 주소 변환을 병렬로 실행
       const [addressPromise, restaurantsPromise] = await Promise.allSettled([
         this.getAddressFromCoords(latitude, longitude),
         this.searchNearbyRestaurants(latitude, longitude),
       ]);
 
-      // 주소 정보 표시
+      // 주소 정보 표시 (주소 변환이 실패해도 좌표 정보는 표시)
       if (addressPromise.status === "fulfilled") {
         const address = addressPromise.value;
         locationInfo.innerHTML = `
@@ -248,18 +250,21 @@ class FoodTournamentGame {
             <span class="location-text">${address}</span>
           </div>
         `;
-        locationInfo.style.display = "block";
       } else {
+        console.log(
+          "Address conversion failed, showing coordinates:",
+          addressPromise.reason
+        );
         locationInfo.innerHTML = `
           <div class="location-display">
             <span class="location-icon">📍</span>
-            <span class="location-text">위도: ${latitude.toFixed(
-              6
-            )}, 경도: ${longitude.toFixed(6)}</span>
+            <span class="location-text">현재 위치 (위도: ${latitude.toFixed(
+              4
+            )}, 경도: ${longitude.toFixed(4)})</span>
           </div>
         `;
-        locationInfo.style.display = "block";
       }
+      locationInfo.style.display = "block";
 
       // 음식점 검색 결과 처리
       if (restaurantsPromise.status === "fulfilled") {
@@ -306,9 +311,10 @@ class FoodTournamentGame {
     return response.data.restaurants;
   }
 
-  // 좌표를 주소로 변환
+  // 좌표를 주소로 변환 (간단한 지역 추정)
   async getAddressFromCoords(latitude, longitude) {
     try {
+      // 우선 네이버 API를 시도
       const coords = `${longitude},${latitude}`;
       const response = await this.apiCall(
         `/api/naver/reverse-geocode?coords=${coords}&orders=roadaddr,addr`
@@ -330,8 +336,142 @@ class FoodTournamentGame {
       throw new Error("주소 변환 실패");
     } catch (error) {
       console.error("Reverse geocoding failed:", error);
-      throw error;
+
+      // 네이버 API 실패시 간단한 지역 추정
+      return this.estimateLocationFromCoords(latitude, longitude);
     }
+  }
+
+  // 좌표로부터 간단한 지역 추정
+  estimateLocationFromCoords(latitude, longitude) {
+    // 대한민국 주요 도시 좌표 범위
+    const regions = [
+      {
+        name: "서울특별시",
+        latMin: 37.4,
+        latMax: 37.7,
+        lngMin: 126.8,
+        lngMax: 127.2,
+      },
+      {
+        name: "부산광역시",
+        latMin: 35.0,
+        latMax: 35.4,
+        lngMin: 128.9,
+        lngMax: 129.4,
+      },
+      {
+        name: "대구광역시",
+        latMin: 35.7,
+        latMax: 36.0,
+        lngMin: 128.4,
+        lngMax: 128.8,
+      },
+      {
+        name: "인천광역시",
+        latMin: 37.2,
+        latMax: 37.6,
+        lngMin: 126.4,
+        lngMax: 126.9,
+      },
+      {
+        name: "광주광역시",
+        latMin: 35.1,
+        latMax: 35.3,
+        lngMin: 126.7,
+        lngMax: 127.0,
+      },
+      {
+        name: "대전광역시",
+        latMin: 36.2,
+        latMax: 36.5,
+        lngMin: 127.3,
+        lngMax: 127.6,
+      },
+      {
+        name: "울산광역시",
+        latMin: 35.4,
+        latMax: 35.7,
+        lngMin: 129.1,
+        lngMax: 129.5,
+      },
+      {
+        name: "경기도",
+        latMin: 36.8,
+        latMax: 38.3,
+        lngMin: 126.3,
+        lngMax: 127.9,
+      },
+      {
+        name: "강원도",
+        latMin: 37.0,
+        latMax: 38.7,
+        lngMin: 127.0,
+        lngMax: 129.4,
+      },
+      {
+        name: "충청북도",
+        latMin: 36.0,
+        latMax: 37.2,
+        lngMin: 127.2,
+        lngMax: 128.5,
+      },
+      {
+        name: "충청남도",
+        latMin: 35.7,
+        latMax: 37.0,
+        lngMin: 125.9,
+        lngMax: 127.8,
+      },
+      {
+        name: "전라북도",
+        latMin: 35.1,
+        latMax: 36.2,
+        lngMin: 126.4,
+        lngMax: 127.9,
+      },
+      {
+        name: "전라남도",
+        latMin: 33.8,
+        latMax: 35.8,
+        lngMin: 125.0,
+        lngMax: 127.6,
+      },
+      {
+        name: "경상북도",
+        latMin: 35.4,
+        latMax: 37.5,
+        lngMin: 128.0,
+        lngMax: 130.0,
+      },
+      {
+        name: "경상남도",
+        latMin: 34.6,
+        latMax: 36.0,
+        lngMin: 127.5,
+        lngMax: 129.2,
+      },
+      {
+        name: "제주특별자치도",
+        latMin: 33.1,
+        latMax: 33.6,
+        lngMin: 126.1,
+        lngMax: 126.9,
+      },
+    ];
+
+    for (const region of regions) {
+      if (
+        latitude >= region.latMin &&
+        latitude <= region.latMax &&
+        longitude >= region.lngMin &&
+        longitude <= region.lngMax
+      ) {
+        return region.name;
+      }
+    }
+
+    return "대한민국"; // 기본값
   }
 
   // 현재 위치 가져오기

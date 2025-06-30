@@ -415,6 +415,8 @@ async function handleReverseGeocode(url, env) {
   try {
     const naverUrl = `https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?coords=${coords}&sourcecrs=${sourcecrs}&targetcrs=${targetcrs}&orders=${orders}`;
 
+    console.log("Reverse geocode request:", { naverUrl, coords, orders });
+
     const response = await fetch(naverUrl, {
       headers: {
         "X-NCP-APIGW-API-KEY-ID": env.NAVER_CLIENT_ID,
@@ -423,10 +425,17 @@ async function handleReverseGeocode(url, env) {
     });
 
     if (!response.ok) {
-      throw new Error(`Naver API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(
+        `Naver Reverse Geocode API error: ${response.status}`,
+        errorText
+      );
+      throw new Error(`Naver API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log("Reverse geocode response:", data);
+
     return new Response(JSON.stringify(data), {
       status: 200,
       headers: {
@@ -439,7 +448,11 @@ async function handleReverseGeocode(url, env) {
     return jsonResponse(
       {
         success: false,
-        error: "Failed to reverse geocode",
+        error: `Failed to reverse geocode: ${error.message}`,
+        details: {
+          coords,
+          naverUrl: `https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?coords=${coords}&sourcecrs=${sourcecrs}&targetcrs=${targetcrs}&orders=${orders}`,
+        },
       },
       500
     );
