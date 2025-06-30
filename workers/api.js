@@ -185,16 +185,23 @@ async function handleGameChoice(request) {
       );
       nextOptions = shuffled.slice(0, 2);
     } else {
-      // 2단계: 상위 음식들 간의 대결
-      const sortedFoods = session.availableFoods
+      // 2단계: 상위 음식들 간의 다양한 대결
+      const topFoods = session.availableFoods
         .filter((food) => session.foodCounts[food.name] > 0)
         .sort(
           (a, b) => session.foodCounts[b.name] - session.foodCounts[a.name]
         );
 
-      if (sortedFoods.length >= 2) {
-        nextOptions = sortedFoods.slice(0, 2);
+      if (topFoods.length >= 4) {
+        // 상위 음식들 중에서 랜덤하게 2개 선택 (상위 6개 중에서)
+        const topCandidates = topFoods.slice(0, Math.min(6, topFoods.length));
+        const shuffled = [...topCandidates].sort(() => 0.5 - Math.random());
+        nextOptions = shuffled.slice(0, 2);
+      } else if (topFoods.length >= 2) {
+        // 상위 음식이 적으면 그 중에서 선택
+        nextOptions = topFoods.slice(0, 2);
       } else {
+        // 선택된 음식이 거의 없으면 전체에서 랜덤 선택
         const shuffled = [...session.availableFoods].sort(
           () => 0.5 - Math.random()
         );
