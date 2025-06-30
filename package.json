@@ -1,24 +1,26 @@
 {
   "name": "hunger-game",
   "version": "1.0.0",
-  "description": "음식 토너먼트 게임 - Cloudflare Workers 기반",
-  "main": "workers/api.js",
+  "description": "음식 토너먼트 게임",
+  "main": "script.js",
   "scripts": {
-    "dev": "wrangler dev",
+    "start": "npx http-server . -p 8080",
+    "dev:workers": "wrangler dev --port 8787 --local",
     "deploy": "wrangler deploy",
-    "deploy:production": "wrangler deploy --env production",
-    "tail": "wrangler tail",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
-    "cloudflare-workers",
     "food-tournament",
     "game",
-    "javascript"
+    "javascript",
+    "html",
+    "css",
+    "cloudflare-workers"
   ],
   "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
+    "http-server": "^14.1.1",
     "wrangler": "^3.0.0"
   },
   "engines": {

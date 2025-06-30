@@ -1,4 +1,4 @@
-// 음식 데이터베이스 - 대표 종류로 통합된 다양한 음식들
+// 음식 데이터베이스
 export const foods = [
   // 한식
   { emoji: "🍲", name: "찌개", desc: "김치찌개, 된장찌개 등 다양한 한국 찌개" },
@@ -19,11 +19,6 @@ export const foods = [
     emoji: "🍱",
     name: "비빔밥",
     desc: "갖가지 나물과 고추장이 어우러진 영양만점 한식",
-  },
-  {
-    emoji: "🍛",
-    name: "덮밥",
-    desc: "밥 위에 다양한 재료를 올린 한 그릇 요리",
   },
   {
     emoji: "🍙",
@@ -106,7 +101,6 @@ export const foods = [
   },
   { emoji: "🍜", name: "소바", desc: "메밀로 만든 일본 전통 면 요리" },
   { emoji: "🍛", name: "규동", desc: "소고기가 올라간 일본식 덮밥" },
-
   { emoji: "🍱", name: "가츠동", desc: "돈까스가 올라간 일본식 덮밥" },
   { emoji: "🍛", name: "오므라이스", desc: "계란으로 감싼 일본식 볶음밥" },
   { emoji: "🥟", name: "교자", desc: "바삭하고 고소한 일본식 만두" },
@@ -154,7 +148,6 @@ export const foods = [
   },
   { emoji: "🥗", name: "포케볼", desc: "하와이식 생선 샐러드 볼" },
 
-
   // 세계 각국 요리
   { emoji: "🥘", name: "파에야", desc: "사프란 향이 나는 스페인 전통 쌀 요리" },
   { emoji: "🥘", name: "리조또", desc: "크리미한 이탈리아 쌀 요리" },
@@ -172,5 +165,4 @@ export const foods = [
     desc: "간편하고 빠르게 먹을 수 있는 인스턴트 면",
   },
   { emoji: "🍙", name: "주먹밥", desc: "손에 들고 먹기 편한 작은 크기의 밥" },
-
 ];

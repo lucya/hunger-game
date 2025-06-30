@@ -1,234 +1,135 @@
-// Cloudflare Workers API 기반 음식 토너먼트 게임
+// 순수 클라이언트 사이드 음식 토너먼트 게임
 class FoodTournamentGame {
   constructor() {
-    this.apiBaseUrl = this.getApiBaseUrl(); // 동적 API 엔드포인트 설정
     this.sessionId = null;
     this.currentRound = 0;
     this.totalRounds = 20;
     this.currentOptions = [];
     this.gameSession = null;
+    this.availableFoods = [];
+    this.choices = [];
+    this.foodCounts = {};
+    this.apiBaseUrl = this.getApiBaseUrl();
   }
 
-  // API 기본 URL 결정
+  // API 기본 URL 설정
   getApiBaseUrl() {
-    // 1. 전역 변수에서 API URL이 설정되어 있으면 사용 (Expo 앱에서 설정)
-    if (window.HUNGER_GAME_API_URL) {
-      console.log(
-        "Using API URL from global variable:",
-        window.HUNGER_GAME_API_URL
-      );
-      return window.HUNGER_GAME_API_URL;
-    }
-
-    // 2. 현재 호스트가 Cloudflare Workers 배포 도메인이면 같은 호스트 사용
-    if (window.location.hostname === "hunger-game.natureweb.workers.dev") {
-      const apiUrl = `${window.location.protocol}//${window.location.host}`;
-      console.log("Using Cloudflare Workers host for API:", apiUrl);
-      return apiUrl;
-    }
-
-    // 3. 로컬 개발 환경 (localhost)
+    // 로컬 개발 시 Workers 개발 서버 사용
     if (
       window.location.hostname === "localhost" ||
       window.location.hostname === "127.0.0.1"
     ) {
-      console.log("Using relative path for local development");
+      return "http://localhost:8787"; // Wrangler dev 서버
+    }
+
+    // 배포된 도메인에서는 같은 호스트 사용
+    if (
+      window.location.hostname.includes("hunger-game.natureweb.workers.dev")
+    ) {
       return "";
     }
 
-    // 4. 기본값: Cloudflare Workers 배포 URL (앱 환경 등)
-    const defaultApiUrl = "https://hunger-game.natureweb.workers.dev";
-    console.log("Using default Cloudflare Workers API URL:", defaultApiUrl);
-    return defaultApiUrl;
+    // 기본값: 배포된 Workers URL
+    return "https://hunger-game-api.natureweb.workers.dev";
+  }
+
+  // Expo 앱에서 API URL 설정
+  setApiUrlFromExpo(url) {
+    if (url && typeof url === "string" && url.trim()) {
+      this.apiBaseUrl = url.trim();
+      console.log("API URL set from Expo:", this.apiBaseUrl);
+      return true;
+    }
+    return false;
+  }
+
+  // API 호출 헬퍼
+  async apiCall(endpoint, options = {}) {
+    const url = `${this.apiBaseUrl}/api${endpoint}`;
+    const defaultOptions = {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    };
+
+    const finalOptions = { ...defaultOptions, ...options };
+
+    console.log(`API Call: ${finalOptions.method || "GET"} ${url}`);
+
+    try {
+      const response = await fetch(url, finalOptions);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("API call failed:", error);
+      throw error;
+    }
   }
 
   // 게임 시작
   async startGame() {
     try {
-      console.log("Starting game with API URL:", this.apiBaseUrl);
+      console.log("Starting game with API server:", this.apiBaseUrl);
 
-      // API 헬스 체크 먼저 수행
-      const healthCheck = await this.checkApiHealth();
-      if (!healthCheck) {
-        throw new Error("API server is not responding");
+      // API 헬스 체크
+      try {
+        await this.apiCall("/health");
+        console.log("API server is healthy");
+      } catch (error) {
+        console.warn("API health check failed:", error);
       }
 
-      // 새로운 게임 세션 생성
-      const sessionUrl = `${this.apiBaseUrl}/game/session`;
-      console.log("Creating game session at:", sessionUrl);
-
-      const response = await fetch(sessionUrl, {
+      // 게임 세션 생성
+      const response = await this.apiCall("/game/session", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
       });
 
-      console.log("Session response status:", response.status);
-      console.log("Session response ok:", response.ok);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Session creation failed:", errorText);
-        throw new Error(
-          `Failed to create game session: ${response.status} ${errorText}`
-        );
+      if (!response.success) {
+        throw new Error(response.error || "Failed to create game session");
       }
 
-      const result = await response.json();
-      console.log("Session creation result:", result);
-
-      if (!result.success) {
-        throw new Error(result.error || "Failed to create game session");
-      }
-
-      this.gameSession = result.data;
+      this.gameSession = response.data;
       this.sessionId = this.gameSession.id;
-      this.currentRound = 0;
+      this.currentRound = this.gameSession.currentRound;
+      this.availableFoods = this.gameSession.availableFoods;
+      this.foodCounts = this.gameSession.foodCounts;
 
-      console.log("Game session created successfully:", this.sessionId);
-      this.showScreen("game");
-      await this.nextRound();
+      console.log("Game session created:", this.sessionId);
+
+      // 첫 번째 라운드 시작
+      await this.startNextRound();
     } catch (error) {
-      console.error("Error starting game:", error);
-      console.error("Error details:", error.message);
-      console.error("API Base URL:", this.apiBaseUrl);
-
-      // 더 상세한 에러 메시지 제공
-      let errorMessage = "게임을 시작할 수 없습니다.\n\n";
-      errorMessage += `🔍 에러 상세 정보:\n`;
-      errorMessage += `• 에러 메시지: ${error.message}\n`;
-      errorMessage += `• API URL: ${this.apiBaseUrl}\n`;
-      errorMessage += `• 현재 호스트: ${window.location.hostname}\n`;
-      errorMessage += `• 프로토콜: ${window.location.protocol}\n\n`;
-
-      if (error.message.includes("API server is not responding")) {
-        errorMessage += "❌ 서버 연결 실패\n";
-        errorMessage += "• API 서버가 응답하지 않습니다.\n";
-      } else if (error.message.includes("Failed to fetch")) {
-        errorMessage += "❌ 네트워크 연결 실패\n";
-        errorMessage += "• 인터넷 연결을 확인해주세요.\n";
-        errorMessage += "• 방화벽이나 보안 설정을 확인해주세요.\n";
-      } else if (error.message.includes("NetworkError")) {
-        errorMessage += "❌ 네트워크 에러\n";
-        errorMessage += "• CORS 정책 또는 네트워크 차단 문제일 수 있습니다.\n";
-      } else if (error.message.includes("TypeError")) {
-        errorMessage += "❌ 타입 에러\n";
-        errorMessage += "• API 응답 형식에 문제가 있습니다.\n";
-      }
-
-      errorMessage += "\n💡 해결 방법:\n";
-      errorMessage += "1. 인터넷 연결 확인\n";
-      errorMessage += "2. 앱 재시작\n";
-      errorMessage += "3. 잠시 후 다시 시도\n";
-
-      alert(errorMessage);
+      console.error("Failed to start game:", error);
+      this.showError(`게임 시작 실패: ${error.message}`);
     }
   }
 
-  // 게임 재시작
-  async restartGame() {
-    // 근처 음식점 목록 초기화
-    const restaurantsContainer = document.getElementById(
-      "restaurants-container"
-    );
-    const locationStatus = document.getElementById("location-status");
-    const locationInfo = document.getElementById("location-info");
-    const restaurantsList = document.getElementById("restaurants-list");
-
-    if (restaurantsContainer) {
-      restaurantsContainer.classList.add("hidden");
-    }
-    if (locationInfo) {
-      locationInfo.classList.add("hidden");
-    }
-    if (locationStatus) {
-      locationStatus.textContent = "";
-      locationStatus.className = "location-status";
-    }
-    if (restaurantsList) {
-      restaurantsList.innerHTML = "";
-    }
-
-    this.winnerFood = null;
-    await this.startGame();
-  }
-
-  // 화면 전환
-  showScreen(screenName) {
-    const screens = ["start", "game", "result"];
-    screens.forEach((screen) => {
-      const element = document.getElementById(`${screen}-screen`);
-      if (element) {
-        element.classList.toggle("active", screen === screenName);
-      }
-    });
-  }
-
-  // 다음 라운드
-  async nextRound() {
+  // 다음 라운드 시작
+  async startNextRound() {
     if (this.currentRound >= this.totalRounds) {
-      await this.endGame();
+      await this.showResult();
       return;
     }
 
-    try {
-      // 첫 번째 라운드거나 이전 선택 후 다음 옵션이 있는 경우
-      if (this.currentRound === 0) {
-        // 첫 라운드는 세션 생성 시 받은 음식 데이터에서 랜덤 선택
-        const shuffled = [...this.gameSession.availableFoods].sort(
-          () => 0.5 - Math.random()
-        );
-        this.currentOptions = shuffled.slice(0, 2);
-      }
-      // currentOptions가 이미 설정되어 있으면 사용 (이전 선택 후 서버에서 받은 다음 옵션)
-
-      this.displayFoodOptions(this.currentOptions[0], this.currentOptions[1]);
-      this.updateProgress();
-    } catch (error) {
-      console.error("Error in next round:", error);
-      alert("다음 라운드를 진행할 수 없습니다.");
+    // 옵션 생성 (첫 라운드는 랜덤, 이후는 서버에서 결정)
+    if (this.currentRound === 0) {
+      const shuffled = [...this.availableFoods].sort(() => 0.5 - Math.random());
+      this.currentOptions = shuffled.slice(0, 2);
     }
+
+    this.displayOptions();
   }
 
-  // 음식 옵션 표시
-  displayFoodOptions(food1, food2) {
-    const option1 = document.getElementById("option1");
-    const option2 = document.getElementById("option2");
-
-    if (option1 && option2) {
-      // 현재 게임 단계에 따른 스타일 적용
-      const gamePhase = this.gameSession?.gamePhase || 1;
-      const phaseClass = `phase-${gamePhase}`;
-
-      option1.className = `food-option ${phaseClass}`;
-      option2.className = `food-option ${phaseClass}`;
-
-      option1.innerHTML = `
-        <div class="food-emoji">${food1.emoji}</div>
-        <div class="food-name">${food1.name}</div>
-        <div class="food-desc">${food1.desc}</div>
-      `;
-
-      option2.innerHTML = `
-        <div class="food-emoji">${food2.emoji}</div>
-        <div class="food-name">${food2.name}</div>
-        <div class="food-desc">${food2.desc}</div>
-      `;
-    }
-  }
-
-  // 옵션 선택
-  async selectOption(optionIndex) {
-    const selectedFood = this.currentOptions[optionIndex];
-
+  // 선택 처리
+  async makeChoice(selectedFood) {
     try {
-      // 서버에 선택 전송
-      const response = await fetch(`${this.apiBaseUrl}/game/choice`, {
+      const response = await this.apiCall("/game/choice", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           sessionId: this.sessionId,
           selectedFood: selectedFood,
@@ -236,624 +137,501 @@ class FoodTournamentGame {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to submit choice");
-      }
-
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || "Failed to submit choice");
+      if (!response.success) {
+        throw new Error(response.error || "Failed to process choice");
       }
 
       // 게임 상태 업데이트
-      this.gameSession = result.data.session;
+      this.gameSession = response.data.session;
       this.currentRound = this.gameSession.currentRound;
+      this.foodCounts = this.gameSession.foodCounts;
 
-      // 선택 애니메이션
-      const selectedOption = document.getElementById(
-        `option${optionIndex + 1}`
-      );
-      if (selectedOption) {
-        selectedOption.style.transform = "scale(1.1)";
-        selectedOption.style.backgroundColor = "#4CAF50";
-
-        setTimeout(async () => {
-          selectedOption.style.transform = "";
-          selectedOption.style.backgroundColor = "";
-
-          // 게임 완료 확인
-          if (result.data.isGameComplete) {
-            await this.endGame();
-          } else {
-            // 다음 라운드 옵션 설정
-            this.currentOptions = result.data.nextOptions;
-            await this.nextRound();
-          }
-        }, 500);
-      }
-    } catch (error) {
-      console.error("Error submitting choice:", error);
-
-      let errorMessage = "선택을 처리할 수 없습니다.\n\n";
-      errorMessage += `🔍 에러 상세 정보:\n`;
-      errorMessage += `• 에러 메시지: ${error.message}\n`;
-      errorMessage += `• API URL: ${this.apiBaseUrl}\n`;
-      errorMessage += `• 세션 ID: ${this.sessionId}\n`;
-      errorMessage += `• 현재 라운드: ${this.currentRound}\n\n`;
-
-      if (error.message.includes("Failed to fetch")) {
-        errorMessage += "❌ 네트워크 연결 실패\n";
-        errorMessage += "• 인터넷 연결을 확인해주세요.\n";
-      } else if (error.message.includes("Failed to submit choice")) {
-        errorMessage += "❌ 서버 처리 실패\n";
-        errorMessage += "• 서버에서 선택을 처리하지 못했습니다.\n";
-      }
-
-      errorMessage += "\n💡 해결 방법:\n";
-      errorMessage += "1. 인터넷 연결 확인\n";
-      errorMessage += "2. 게임 재시작\n";
-      errorMessage += "3. 잠시 후 다시 시도\n";
-
-      alert(errorMessage);
-    }
-  }
-
-  // 진행률 업데이트
-  updateProgress() {
-    const progressBar = document.getElementById("progress");
-    const roundCounter = document.getElementById("round-counter");
-
-    if (progressBar && roundCounter) {
-      const progressPercentage =
-        ((this.currentRound + 1) / this.totalRounds) * 100;
-      progressBar.style.width = `${progressPercentage}%`;
-      roundCounter.textContent = `${this.currentRound + 1} / ${
-        this.totalRounds
-      }`;
-    }
-  }
-
-  // 게임 종료
-  async endGame() {
-    try {
-      // 서버에서 최종 결과 가져오기
-      const response = await fetch(
-        `${this.apiBaseUrl}/game/result?sessionId=${this.sessionId}`
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to get game result");
-      }
-
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || "Failed to get game result");
-      }
-
-      const winner = result.data.winner;
-      this.displayFinalResult(winner);
-      this.showScreen("result");
-    } catch (error) {
-      console.error("Error ending game:", error);
-      // 폴백: 로컬에서 마지막 선택한 음식을 우승자로 설정
-      if (this.gameSession && this.gameSession.choices.length > 0) {
-        const lastChoice =
-          this.gameSession.choices[this.gameSession.choices.length - 1];
-        this.displayFinalResult(lastChoice);
-        this.showScreen("result");
+      // 게임 완료 체크
+      if (response.data.isGameComplete) {
+        await this.showResult();
       } else {
-        alert("게임 결과를 가져올 수 없습니다.");
+        // 다음 옵션 설정
+        this.currentOptions = response.data.nextOptions;
+        this.displayOptions();
       }
+    } catch (error) {
+      console.error("Failed to make choice:", error);
+      this.showError(`선택 처리 실패: ${error.message}`);
     }
   }
 
-  // 최종 결과 표시
-  displayFinalResult(winner) {
-    const finalEmoji = document.getElementById("final-emoji");
-    const finalName = document.getElementById("final-name");
-    const finalDesc = document.getElementById("final-desc");
-
-    if (finalEmoji && finalName && finalDesc) {
-      finalEmoji.textContent = winner.emoji;
-      finalName.textContent = winner.name;
-      finalDesc.textContent = `오늘은 ${winner.name}로 결정!`;
-    }
-
-    // 우승 음식 저장 (근처 음식점 검색용)
-    this.winnerFood = winner;
-  }
-
-  // 위치 정보 가져오기 및 근처 음식점 검색
-  async findNearbyRestaurants() {
-    const findNearbyBtn = document.getElementById("find-nearby-btn");
-    const locationStatus = document.getElementById("location-status");
-    const locationInfo = document.getElementById("location-info");
-    const currentAddress = document.getElementById("current-address");
-    const restaurantsContainer = document.getElementById(
-      "restaurants-container"
-    );
-
-    if (!this.winnerFood) {
-      locationStatus.textContent = "게임을 먼저 완료해주세요.";
-      locationStatus.className = "location-status error";
-      return;
-    }
-
-    // 위치 정보 소스 확인
-    const locationSource = this.getLocationSource();
-
-    // 버튼 비활성화 및 로딩 상태
-    findNearbyBtn.disabled = true;
-    findNearbyBtn.textContent = "📍 위치 확인 중...";
-
-    if (locationSource.source === "expo") {
-      locationStatus.textContent =
-        "Expo 앱에서 전달받은 위치 정보를 사용합니다...";
-    } else {
-      locationStatus.textContent = "브라우저에서 위치 정보를 가져오는 중...";
-    }
-    locationStatus.className = "location-status loading";
-
+  // 결과 표시
+  async showResult() {
     try {
-      // 위치 정보 요청
+      const response = await this.apiCall(
+        `/game/result?sessionId=${this.sessionId}`
+      );
+
+      if (!response.success) {
+        throw new Error(response.error || "Failed to get game result");
+      }
+
+      const { winner, topFoods } = response.data;
+
+      // 결과 화면 표시
+      document.getElementById("game-screen").classList.remove("active");
+      document.getElementById("result-screen").classList.add("active");
+
+      // 우승자 표시
+      document.getElementById("winner-name").textContent = winner.name;
+      document.getElementById("winner-emoji").textContent = winner.emoji;
+      document.getElementById("winner-description").textContent =
+        winner.description;
+
+      // 상위 음식들 표시
+      const topFoodsList = document.getElementById("top-foods-list");
+      topFoodsList.innerHTML = "";
+
+      topFoods.forEach((item, index) => {
+        const foodItem = document.createElement("div");
+        foodItem.className = "food-item";
+        foodItem.innerHTML = `
+          <span class="rank">${index + 1}위</span>
+          <span class="food-emoji">${item.food.emoji}</span>
+          <span class="food-name">${item.food.name}</span>
+          <span class="food-count">${item.count}번 선택</span>
+        `;
+        topFoodsList.appendChild(foodItem);
+      });
+    } catch (error) {
+      console.error("Failed to show result:", error);
+      this.showError(`결과 표시 실패: ${error.message}`);
+    }
+  }
+
+  // 근처 음식점 찾기
+  async findNearbyRestaurants() {
+    try {
+      const statusElement = document.getElementById("location-status");
+      const restaurantsContainer = document.getElementById("restaurants-list");
+      const locationInfo = document.getElementById("location-info");
+
+      statusElement.textContent = "위치 정보를 가져오는 중...";
+      statusElement.className = "status loading";
+
+      // 위치 정보 가져오기
       const position = await this.getCurrentPosition();
       const { latitude, longitude } = position.coords;
 
-      // 위치 정보 표시
-      locationInfo.classList.remove("hidden");
-      currentAddress.textContent = "현재 위치 주소를 확인하는 중...";
+      console.log("Position obtained:", { latitude, longitude });
 
-      // 주소 변환과 음식점 검색을 병렬로 실행
-      const [addressResult, restaurantResult] = await Promise.allSettled([
+      // 병렬로 주소 변환과 음식점 검색 실행
+      const [addressPromise, restaurantsPromise] = await Promise.allSettled([
         this.getAddressFromCoords(latitude, longitude),
-        fetch(
-          `${
-            this.apiBaseUrl
-          }/game/nearby-restaurants?foodName=${encodeURIComponent(
-            this.winnerFood.name
-          )}&latitude=${latitude}&longitude=${longitude}&radius=1500`
-        ),
+        this.searchNearbyRestaurants(latitude, longitude),
       ]);
 
-      // 주소 표시
-      if (addressResult.status === "fulfilled") {
-        currentAddress.textContent = addressResult.value;
+      // 주소 정보 표시
+      if (addressPromise.status === "fulfilled") {
+        const address = addressPromise.value;
+        locationInfo.innerHTML = `
+          <div class="location-display">
+            <span class="location-icon">📍</span>
+            <span class="location-text">${address}</span>
+          </div>
+        `;
+        locationInfo.style.display = "block";
       } else {
-        currentAddress.textContent = `위도: ${latitude.toFixed(
-          4
-        )}, 경도: ${longitude.toFixed(4)}`;
-        console.error("Address conversion failed:", addressResult.reason);
+        locationInfo.innerHTML = `
+          <div class="location-display">
+            <span class="location-icon">📍</span>
+            <span class="location-text">위도: ${latitude.toFixed(
+              6
+            )}, 경도: ${longitude.toFixed(6)}</span>
+          </div>
+        `;
+        locationInfo.style.display = "block";
       }
 
       // 음식점 검색 결과 처리
-      locationStatus.textContent = "근처 음식점을 검색하는 중...";
-
-      if (restaurantResult.status === "rejected") {
-        throw new Error("Failed to search nearby restaurants");
-      }
-
-      const response = restaurantResult.value;
-      if (!response.ok) {
-        throw new Error("Failed to search nearby restaurants");
-      }
-
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || "Failed to search nearby restaurants");
-      }
-
-      // 음식점 목록 표시
-      this.displayRestaurants(result.data);
-      locationStatus.textContent = `${result.data.total}개의 음식점을 찾았습니다.`;
-      locationStatus.className = "location-status success";
-      restaurantsContainer.classList.remove("hidden");
-    } catch (error) {
-      console.error("Error finding nearby restaurants:", error);
-
-      let errorMessage = "음식점 검색에 실패했습니다.\n\n";
-      errorMessage += `🔍 에러 상세 정보:\n`;
-      errorMessage += `• 에러 메시지: ${error.message}\n`;
-      errorMessage += `• API URL: ${this.apiBaseUrl}\n`;
-      errorMessage += `• 검색 음식: ${this.winnerFood?.name || "N/A"}\n\n`;
-
-      if (error.code === error.PERMISSION_DENIED) {
-        errorMessage += "❌ 위치 권한 거부\n";
-        errorMessage += "• 위치 정보 접근이 거부되었습니다.\n";
-        errorMessage += "• 브라우저 설정에서 위치 권한을 허용해주세요.\n";
-      } else if (error.code === error.POSITION_UNAVAILABLE) {
-        errorMessage += "❌ 위치 정보 불가\n";
-        errorMessage += "• 위치 정보를 사용할 수 없습니다.\n";
-        errorMessage += "• GPS가 꺼져있거나 실내에 있을 수 있습니다.\n";
-      } else if (error.code === error.TIMEOUT) {
-        errorMessage += "❌ 위치 요청 시간 초과\n";
-        errorMessage += "• 위치 정보 요청이 시간 초과되었습니다.\n";
-        errorMessage += "• 네트워크 상태를 확인해주세요.\n";
-      } else if (error.message.includes("Failed to fetch")) {
-        errorMessage += "❌ 네트워크 연결 실패\n";
-        errorMessage += "• 음식점 검색 API 호출에 실패했습니다.\n";
-        errorMessage += "• 인터넷 연결을 확인해주세요.\n";
+      if (restaurantsPromise.status === "fulfilled") {
+        const restaurants = restaurantsPromise.value;
+        this.displayRestaurants(restaurants);
+        statusElement.textContent = `${restaurants.length}개의 음식점을 찾았습니다!`;
+        statusElement.className = "status success";
       } else {
-        errorMessage += "❌ 알 수 없는 오류\n";
-        errorMessage += "• 예상치 못한 오류가 발생했습니다.\n";
+        throw restaurantsPromise.reason;
       }
-
-      errorMessage += "\n💡 해결 방법:\n";
-      errorMessage += "1. 위치 권한 허용\n";
-      errorMessage += "2. GPS 활성화\n";
-      errorMessage += "3. 인터넷 연결 확인\n";
-      errorMessage += "4. 잠시 후 다시 시도\n";
-
-      locationStatus.textContent =
-        error.code === error.PERMISSION_DENIED
-          ? "위치 권한이 거부되었습니다."
-          : error.code === error.POSITION_UNAVAILABLE
-          ? "위치 정보를 사용할 수 없습니다."
-          : error.code === error.TIMEOUT
-          ? "위치 요청이 시간 초과되었습니다."
-          : "음식점 검색에 실패했습니다.";
-      locationStatus.className = "location-status error";
-
-      // 상세 에러 정보를 팝업으로 표시
-      alert(errorMessage);
-
-      // 에러 시에도 위치 정보는 숨기지 않음
-      if (!locationInfo.classList.contains("hidden")) {
-        currentAddress.textContent = "위치 정보를 가져올 수 없습니다.";
-      }
-    } finally {
-      // 버튼 복원
-      findNearbyBtn.disabled = false;
-      findNearbyBtn.textContent = "📍 내 근처 음식점 찾기";
+    } catch (error) {
+      console.error("Failed to find nearby restaurants:", error);
+      const statusElement = document.getElementById("location-status");
+      statusElement.textContent = this.getLocationErrorMessage(error);
+      statusElement.className = "status error";
     }
   }
 
-  // 위치 정보 가져오기 (Promise 래핑) - Expo 호환
-  getCurrentPosition() {
-    return new Promise((resolve, reject) => {
-      // 1. Expo 앱에서 전달된 위도, 경도 값이 있는지 확인 (유효한 숫자 값인지 체크)
-      if (
-        typeof window.expoLatitude === "number" &&
-        typeof window.expoLongitude === "number" &&
-        !isNaN(window.expoLatitude) &&
-        !isNaN(window.expoLongitude) &&
-        window.expoLatitude !== 0 &&
-        window.expoLongitude !== 0
-      ) {
-        console.log(
-          "Using location from Expo app:",
-          window.expoLatitude,
-          window.expoLongitude
-        );
-        resolve({
-          coords: {
-            latitude: window.expoLatitude,
-            longitude: window.expoLongitude,
-            accuracy: window.expoAccuracy || 10,
-          },
-        });
-        return;
-      }
-
-      // 2. Expo 파라미터가 없거나 유효하지 않으면 브라우저 geolocation API 사용
-      console.log("Expo location not available, using browser geolocation API");
-      if (!navigator.geolocation) {
-        reject(new Error("Geolocation is not supported by this browser"));
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000, // 5분
-      });
-    });
-  }
-
-  // Expo 앱에서 위도, 경도를 설정하는 메서드
-  setLocationFromExpo(latitude, longitude, accuracy = 10) {
-    console.log("Setting location from Expo:", latitude, longitude, accuracy);
-
-    // 입력값 검증
-    if (
-      typeof latitude !== "number" ||
-      typeof longitude !== "number" ||
-      isNaN(latitude) ||
-      isNaN(longitude)
-    ) {
-      console.error("Invalid location data from Expo:", {
-        latitude,
-        longitude,
-        accuracy,
-      });
-      return false;
+  // 근처 음식점 검색
+  async searchNearbyRestaurants(latitude, longitude) {
+    if (!this.gameSession || !this.gameSession.winner) {
+      throw new Error("게임을 완료한 후 이용해주세요.");
     }
 
-    window.expoLatitude = latitude;
-    window.expoLongitude = longitude;
-    window.expoAccuracy = accuracy;
+    const winner = this.gameSession.winner;
+    const radius = 1500; // 1.5km
 
-    console.log("Location successfully set from Expo");
-    return true;
-  }
-
-  // Expo 앱에서 API URL을 설정하는 메서드
-  setApiUrlFromExpo(apiUrl) {
-    console.log("Setting API URL from Expo:", apiUrl);
-
-    if (!apiUrl || typeof apiUrl !== "string") {
-      console.error("Invalid API URL from Expo:", apiUrl);
-      return false;
-    }
-
-    window.HUNGER_GAME_API_URL = apiUrl;
-    this.apiBaseUrl = apiUrl;
-
-    console.log("API URL successfully set from Expo");
-    return true;
-  }
-
-  // 현재 설정된 위치 정보 확인 메서드
-  getLocationSource() {
-    if (
-      typeof window.expoLatitude === "number" &&
-      typeof window.expoLongitude === "number" &&
-      !isNaN(window.expoLatitude) &&
-      !isNaN(window.expoLongitude) &&
-      window.expoLatitude !== 0 &&
-      window.expoLongitude !== 0
-    ) {
-      return {
-        source: "expo",
-        latitude: window.expoLatitude,
-        longitude: window.expoLongitude,
-        accuracy: window.expoAccuracy || 10,
-      };
-    }
-    return { source: "browser" };
-  }
-
-  // 디버그용: 현재 위치 정보 상태 출력
-  debugLocationInfo() {
-    console.log("=== Location Debug Info ===");
-    console.log(
-      "window.expoLatitude:",
-      window.expoLatitude,
-      typeof window.expoLatitude
+    const response = await this.apiCall(
+      `/game/nearby-restaurants?foodName=${encodeURIComponent(
+        winner.name
+      )}&latitude=${latitude}&longitude=${longitude}&radius=${radius}`
     );
-    console.log(
-      "window.expoLongitude:",
-      window.expoLongitude,
-      typeof window.expoLongitude
-    );
-    console.log(
-      "window.expoAccuracy:",
-      window.expoAccuracy,
-      typeof window.expoAccuracy
-    );
-    console.log("getLocationSource():", this.getLocationSource());
-    console.log("navigator.geolocation available:", !!navigator.geolocation);
-    console.log("========================");
+
+    if (!response.success) {
+      throw new Error(response.error || "Failed to search nearby restaurants");
+    }
+
+    return response.data.restaurants;
   }
 
-  // 좌표를 주소로 변환하는 메서드
+  // 좌표를 주소로 변환
   async getAddressFromCoords(latitude, longitude) {
     try {
-      const response = await fetch(
-        `${this.apiBaseUrl}/naver/reverse-geocode?coords=${longitude},${latitude}&sourcecrs=epsg:4326&targetcrs=epsg:4326&orders=roadaddr,addr`
+      const coords = `${longitude},${latitude}`;
+      const response = await this.apiCall(
+        `/naver/reverse-geocode?coords=${coords}&orders=roadaddr,addr`
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to get address");
-      }
-
-      const data = await response.json();
-
-      if (data.results && data.results.length > 0) {
-        const result = data.results[0];
-        const region = result.region;
-
-        // 도로명 주소 우선, 없으면 지번 주소
-        if (result.land) {
-          const land = result.land;
-          return `${region.area1.name} ${region.area2.name} ${
-            region.area3.name
-          } ${land.name}${land.number1}${
-            land.number2 ? "-" + land.number2 : ""
-          }`;
-        } else {
-          return `${region.area1.name} ${region.area2.name} ${region.area3.name}`;
+      if (
+        response.status &&
+        response.status.code === 0 &&
+        response.results &&
+        response.results.length > 0
+      ) {
+        const result = response.results[0];
+        if (result.region) {
+          const region = result.region;
+          return `${region.area1.name} ${region.area2.name} ${region.area3.name}`.trim();
         }
       }
 
-      return "주소를 찾을 수 없습니다";
+      throw new Error("주소 변환 실패");
     } catch (error) {
-      console.error("Error getting address:", error);
-      return "주소 변환 실패";
+      console.error("Reverse geocoding failed:", error);
+      throw error;
     }
   }
 
-  // 음식점 목록 표시
-  displayRestaurants(data) {
-    const restaurantsList = document.getElementById("restaurants-list");
+  // 현재 위치 가져오기
+  getCurrentPosition() {
+    return new Promise((resolve, reject) => {
+      // Expo에서 전달받은 위치 정보 확인 (강화된 검증)
+      if (window.expoLatitude && window.expoLongitude) {
+        const lat = parseFloat(window.expoLatitude);
+        const lng = parseFloat(window.expoLongitude);
 
-    if (!data.restaurants || data.restaurants.length === 0) {
-      restaurantsList.innerHTML = `
-        <div class="no-restaurants">
-          <p>근처에서 "${data.foodName}" 관련 음식점을 찾을 수 없습니다.</p>
-          <p>다른 지역을 검색해보시거나 검색 반경을 늘려보세요.</p>
-        </div>
-      `;
+        // 더 엄격한 검증
+        if (
+          typeof lat === "number" &&
+          typeof lng === "number" &&
+          !isNaN(lat) &&
+          !isNaN(lng) &&
+          lat !== 0 &&
+          lng !== 0 &&
+          lat >= -90 &&
+          lat <= 90 &&
+          lng >= -180 &&
+          lng <= 180
+        ) {
+          console.log("Using Expo location:", { lat, lng });
+          resolve({
+            coords: { latitude: lat, longitude: lng },
+            source: "expo",
+          });
+          return;
+        }
+      }
+
+      // 브라우저 geolocation 사용
+      if (!navigator.geolocation) {
+        reject(new Error("이 기기에서는 위치 서비스를 지원하지 않습니다."));
+        return;
+      }
+
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 300000, // 5분
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          console.log("Using browser geolocation:", position.coords);
+          resolve({
+            coords: position.coords,
+            source: "browser",
+          });
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          reject(error);
+        },
+        options
+      );
+    });
+  }
+
+  // Expo에서 위치 정보 설정
+  setLocationFromExpo(latitude, longitude) {
+    // 입력값 검증
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+
+    if (
+      typeof lat === "number" &&
+      typeof lng === "number" &&
+      !isNaN(lat) &&
+      !isNaN(lng) &&
+      lat !== 0 &&
+      lng !== 0 &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lng >= -180 &&
+      lng <= 180
+    ) {
+      window.expoLatitude = lat;
+      window.expoLongitude = lng;
+      console.log("Location set from Expo:", { lat, lng });
+      return true;
+    } else {
+      console.warn("Invalid location parameters from Expo:", {
+        latitude,
+        longitude,
+      });
+      return false;
+    }
+  }
+
+  // 위치 소스 확인
+  getLocationSource() {
+    if (window.expoLatitude && window.expoLongitude) {
+      return "expo";
+    }
+    return "browser";
+  }
+
+  // 위치 디버깅 정보
+  debugLocationInfo() {
+    return {
+      expoLatitude: window.expoLatitude,
+      expoLongitude: window.expoLongitude,
+      hasGeolocation: !!navigator.geolocation,
+      locationSource: this.getLocationSource(),
+      apiBaseUrl: this.apiBaseUrl,
+    };
+  }
+
+  // 음식점 목록 표시
+  displayRestaurants(restaurants) {
+    const container = document.getElementById("restaurants-list");
+    container.innerHTML = "";
+
+    if (!restaurants || restaurants.length === 0) {
+      container.innerHTML =
+        '<p class="no-restaurants">근처에 음식점을 찾을 수 없습니다.</p>';
       return;
     }
 
-    restaurantsList.innerHTML = data.restaurants
-      .map(
-        (restaurant) => `
-      <div class="restaurant-item">
+    restaurants.forEach((restaurant) => {
+      const restaurantElement = document.createElement("div");
+      restaurantElement.className = "restaurant-item";
+      restaurantElement.innerHTML = `
         <div class="restaurant-info">
           <h4 class="restaurant-name">${restaurant.title}</h4>
           <p class="restaurant-category">${restaurant.category}</p>
           <p class="restaurant-address">${
             restaurant.roadAddress || restaurant.address
           }</p>
+          ${
+            restaurant.telephone
+              ? `<p class="restaurant-phone">${restaurant.telephone}</p>`
+              : ""
+          }
         </div>
-        <div class="restaurant-actions">
-          <a href="tel:${restaurant.telephone}" class="restaurant-phone" ${
-          !restaurant.telephone ? 'style="display:none"' : ""
-        }>
-            📞 전화
-          </a>
-          <a href="${restaurant.link}" target="_blank" class="restaurant-link">
-            🔗 상세보기
-          </a>
-          <button class="restaurant-map-btn" onclick="window.open('https://map.naver.com/v5/search/${encodeURIComponent(
-            restaurant.title + " " + restaurant.address
-          )}', '_blank')">
-            🗺️ 지도
-          </button>
-        </div>
-      </div>
-    `
-      )
-      .join("");
+      `;
+
+      if (restaurant.link) {
+        restaurantElement.addEventListener("click", () => {
+          window.open(restaurant.link, "_blank");
+        });
+        restaurantElement.style.cursor = "pointer";
+      }
+
+      container.appendChild(restaurantElement);
+    });
   }
 
-  // API 헬스 체크
-  async checkApiHealth() {
-    try {
-      const response = await fetch(`${this.apiBaseUrl}/api/health`);
-      const result = await response.json();
-      console.log("API Health:", result);
-      return result.status === "OK";
-    } catch (error) {
-      console.error("API Health check failed:", error);
-      return false;
+  // 옵션 표시
+  displayOptions() {
+    const optionsContainer = document.getElementById("options-container");
+    const roundElement = document.getElementById("current-round");
+    const progressElement = document.getElementById("progress");
+
+    // 라운드 정보 업데이트
+    roundElement.textContent = `${this.currentRound + 1} / ${this.totalRounds}`;
+
+    // 진행률 업데이트
+    const progressPercent = (this.currentRound / this.totalRounds) * 100;
+    progressElement.style.width = `${progressPercent}%`;
+
+    // 옵션 버튼 생성
+    optionsContainer.innerHTML = "";
+
+    this.currentOptions.forEach((food) => {
+      const button = document.createElement("button");
+      button.className = "food-option";
+      button.innerHTML = `
+        <div class="food-emoji">${food.emoji}</div>
+        <div class="food-name">${food.name}</div>
+        <div class="food-description">${food.description}</div>
+      `;
+
+      button.addEventListener("click", () => this.makeChoice(food));
+      optionsContainer.appendChild(button);
+    });
+  }
+
+  // 게임 재시작
+  restartGame() {
+    // 상태 초기화
+    this.sessionId = null;
+    this.currentRound = 0;
+    this.currentOptions = [];
+    this.gameSession = null;
+    this.availableFoods = [];
+    this.choices = [];
+    this.foodCounts = {};
+
+    // 화면 초기화
+    document.getElementById("result-screen").classList.remove("active");
+    document.getElementById("game-screen").classList.remove("active");
+    document.getElementById("start-screen").classList.add("active");
+
+    // 위치 정보 초기화
+    const locationInfo = document.getElementById("location-info");
+    if (locationInfo) {
+      locationInfo.style.display = "none";
+      locationInfo.innerHTML = "";
     }
+
+    // 음식점 목록 초기화
+    const restaurantsList = document.getElementById("restaurants-list");
+    if (restaurantsList) {
+      restaurantsList.innerHTML = "";
+    }
+
+    // 상태 메시지 초기화
+    const locationStatus = document.getElementById("location-status");
+    if (locationStatus) {
+      locationStatus.textContent = "";
+      locationStatus.className = "status";
+    }
+  }
+
+  // 위치 에러 메시지
+  getLocationErrorMessage(error) {
+    switch (error.code) {
+      case 1:
+        return "위치 접근이 거부되었습니다. 설정에서 위치 권한을 허용해주세요.";
+      case 2:
+        return "위치 정보를 가져올 수 없습니다. 네트워크 연결을 확인해주세요.";
+      case 3:
+        return "위치 정보 요청이 시간 초과되었습니다. 다시 시도해주세요.";
+      default:
+        return error.message || "위치 정보를 가져오는 중 오류가 발생했습니다.";
+    }
+  }
+
+  // 에러 표시
+  showError(message) {
+    // 상세한 에러 정보 포함
+    const errorDetails = {
+      message: message,
+      apiUrl: this.apiBaseUrl,
+      sessionId: this.sessionId,
+      currentRound: this.currentRound,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      locationSource: this.getLocationSource(),
+    };
+
+    console.error("Game Error:", errorDetails);
+
+    // 사용자에게 표시할 메시지
+    let userMessage = message;
+
+    if (message.includes("fetch")) {
+      userMessage += "\n\n네트워크 연결을 확인해주세요.";
+    } else if (message.includes("API")) {
+      userMessage +=
+        "\n\n서버 연결에 문제가 있습니다. 잠시 후 다시 시도해주세요.";
+    }
+
+    userMessage += `\n\n문제가 지속되면 다음 정보를 포함하여 문의해주세요:\n- API URL: ${
+      this.apiBaseUrl
+    }\n- 세션 ID: ${
+      this.sessionId || "N/A"
+    }\n- 시간: ${new Date().toLocaleString()}`;
+
+    alert(userMessage);
   }
 }
 
-// 게임 인스턴스 생성 (전역 접근 가능)
+// 전역 게임 인스턴스
 const game = new FoodTournamentGame();
-window.hungerGame = game; // Expo 앱에서 접근할 수 있도록 전역 변수로 설정
 
-// 앱 환경에서 쉽게 접근할 수 있는 전역 디버그 함수들
+// 전역 함수들
+function startGame() {
+  document.getElementById("start-screen").classList.remove("active");
+  document.getElementById("game-screen").classList.add("active");
+  game.startGame();
+}
+
+function restartGame() {
+  game.restartGame();
+}
+
+function findNearbyRestaurants() {
+  game.findNearbyRestaurants();
+}
+
+// Expo 앱과의 연동을 위한 전역 객체
+window.hungerGame = {
+  setLocationFromExpo: (lat, lng) => game.setLocationFromExpo(lat, lng),
+  setApiUrlFromExpo: (url) => game.setApiUrlFromExpo(url),
+  getLocationSource: () => game.getLocationSource(),
+  debugLocationInfo: () => game.debugLocationInfo(),
+  restartGame: () => game.restartGame(),
+  findNearbyRestaurants: () => game.findNearbyRestaurants(),
+};
+
+// 디버깅을 위한 전역 객체
 window.debugGame = {
-  // 현재 게임 상태 확인
-  getGameState: () => {
-    return {
-      apiBaseUrl: game.apiBaseUrl,
-      sessionId: game.sessionId,
-      currentRound: game.currentRound,
-      totalRounds: game.totalRounds,
-      gameSession: game.gameSession,
-      currentOptions: game.currentOptions,
-      winnerFood: game.winnerFood,
-    };
-  },
-
-  // API 연결 테스트
-  testApiConnection: async () => {
-    console.log("Testing API connection...");
-    console.log("API Base URL:", game.apiBaseUrl);
-
+  checkApiConnection: async () => {
     try {
-      const healthCheck = await game.checkApiHealth();
-      console.log("Health check result:", healthCheck);
-
-      if (healthCheck) {
-        console.log("✅ API connection successful!");
-        return true;
-      } else {
-        console.log("❌ API health check failed");
-        return false;
-      }
+      const response = await game.apiCall("/health");
+      console.log("API Connection OK:", response);
+      return response;
     } catch (error) {
-      console.error("❌ API connection error:", error);
-      return false;
+      console.error("API Connection Failed:", error);
+      return { error: error.message };
     }
   },
-
-  // 위치 정보 확인
-  checkLocation: () => {
-    game.debugLocationInfo();
-  },
-
-  // 강제 게임 시작 (디버그용)
+  getGameState: () => ({
+    sessionId: game.sessionId,
+    currentRound: game.currentRound,
+    apiBaseUrl: game.apiBaseUrl,
+    locationSource: game.getLocationSource(),
+    locationInfo: game.debugLocationInfo(),
+  }),
   forceStartGame: () => {
-    console.log("Force starting game...");
-    game.startGame();
+    startGame();
   },
 };
 
-// DOM 로드 완료 후 이벤트 리스너 등록
-document.addEventListener("DOMContentLoaded", async () => {
-  // API 상태 확인
-  const isApiHealthy = await game.checkApiHealth();
-  if (!isApiHealthy) {
-    console.warn("API is not responding properly");
-  }
-
-  // 시작 버튼 이벤트
-  const startBtn = document.getElementById("start-btn");
-  if (startBtn) {
-    startBtn.addEventListener("click", () => {
-      game.startGame();
-    });
-  }
-
-  // 재시작 버튼 이벤트
-  const restartBtn = document.getElementById("restart-btn");
-  if (restartBtn) {
-    restartBtn.addEventListener("click", () => {
-      game.restartGame();
-    });
-  }
-
-  // 근처 음식점 찾기 버튼 이벤트
-  const findNearbyBtn = document.getElementById("find-nearby-btn");
-  if (findNearbyBtn) {
-    findNearbyBtn.addEventListener("click", () => {
-      game.findNearbyRestaurants();
-    });
-  }
-
-  // 음식 옵션 클릭 이벤트
-  const option1 = document.getElementById("option1");
-  const option2 = document.getElementById("option2");
-
-  if (option1) {
-    option1.addEventListener("click", () => {
-      if (game.currentOptions.length >= 2) {
-        game.selectOption(0);
-      }
-    });
-  }
-
-  if (option2) {
-    option2.addEventListener("click", () => {
-      if (game.currentOptions.length >= 2) {
-        game.selectOption(1);
-      }
-    });
-  }
-
-  // 키보드 단축키 (1, 2번 키로 선택)
-  document.addEventListener("keydown", (event) => {
-    if (game.currentOptions.length >= 2) {
-      if (event.key === "1") {
-        game.selectOption(0);
-      } else if (event.key === "2") {
-        game.selectOption(1);
-      }
-    }
-  });
-});
-
-// 에러 처리를 위한 전역 에러 핸들러
-window.addEventListener("error", (event) => {
-  console.error("Global error:", event.error);
-});
-
-window.addEventListener("unhandledrejection", (event) => {
-  console.error("Unhandled promise rejection:", event.reason);
-});
+console.log("Hunger Game loaded successfully!");
+console.log("API Base URL:", game.apiBaseUrl);
+console.log("Available debug functions:", Object.keys(window.debugGame));
