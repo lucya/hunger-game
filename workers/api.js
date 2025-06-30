@@ -267,11 +267,19 @@ async function handleNearbyRestaurants(url, env) {
   const longitude = parseFloat(url.searchParams.get("longitude"));
   const radius = parseInt(url.searchParams.get("radius")) || 1500;
 
-  if (!foodName || !latitude || !longitude) {
+  if (!foodName || isNaN(latitude) || isNaN(longitude)) {
     return jsonResponse(
       {
         success: false,
-        error: "Missing required parameters: foodName, latitude, longitude",
+        error:
+          "Missing or invalid required parameters: foodName, latitude, longitude",
+        received: {
+          foodName,
+          latitude: url.searchParams.get("latitude"),
+          longitude: url.searchParams.get("longitude"),
+          parsedLatitude: latitude,
+          parsedLongitude: longitude,
+        },
       },
       400
     );
