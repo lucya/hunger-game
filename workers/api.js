@@ -167,9 +167,11 @@ async function handleGameChoice(request) {
     (session.foodCounts[selectedFood.name] || 0) + 1;
   session.currentRound = currentRound + 1;
 
-  // 게임 단계 업데이트
-  if (session.currentRound >= 10) {
-    session.gamePhase = 2;
+  // 게임 단계 업데이트 (3단계 시스템)
+  if (session.currentRound >= 15) {
+    session.gamePhase = 3; // 최종 대결 단계
+  } else if (session.currentRound >= 10) {
+    session.gamePhase = 2; // 혼합 단계
   }
 
   // 게임 완료 체크
@@ -179,13 +181,44 @@ async function handleGameChoice(request) {
   if (!isGameComplete) {
     // 다음 라운드 옵션 생성
     if (session.gamePhase === 1) {
-      // 1단계: 랜덤 선택
+      // 1단계 (1-10라운드): 완전 랜덤 선택
       const shuffled = [...session.availableFoods].sort(
         () => 0.5 - Math.random()
       );
       nextOptions = shuffled.slice(0, 2);
+    } else if (session.gamePhase === 2) {
+      // 2단계 (11-15라운드): 상위 음식 + 새로운 음식 혼합
+      const topFoods = session.availableFoods
+        .filter((food) => session.foodCounts[food.name] > 0)
+        .sort(
+          (a, b) => session.foodCounts[b.name] - session.foodCounts[a.name]
+        );
+
+      const newFoods = session.availableFoods.filter(
+        (food) => session.foodCounts[food.name] === 0
+      );
+
+      // 50% 확률로 상위 음식 vs 새로운 음식, 50% 확률로 상위 음식끼리
+      if (Math.random() < 0.5 && topFoods.length > 0 && newFoods.length > 0) {
+        // 상위 음식 1개 + 새로운 음식 1개
+        const topFood =
+          topFoods[Math.floor(Math.random() * Math.min(5, topFoods.length))];
+        const newFood = newFoods[Math.floor(Math.random() * newFoods.length)];
+        nextOptions = [topFood, newFood];
+      } else if (topFoods.length >= 2) {
+        // 상위 음식들 중에서 2개 선택 (상위 8개 중에서)
+        const topCandidates = topFoods.slice(0, Math.min(8, topFoods.length));
+        const shuffled = [...topCandidates].sort(() => 0.5 - Math.random());
+        nextOptions = shuffled.slice(0, 2);
+      } else {
+        // 폴백: 전체에서 랜덤 선택
+        const shuffled = [...session.availableFoods].sort(
+          () => 0.5 - Math.random()
+        );
+        nextOptions = shuffled.slice(0, 2);
+      }
     } else {
-      // 2단계: 상위 음식들 간의 다양한 대결
+      // 3단계 (16-20라운드): 상위 음식들 간의 최종 대결
       const topFoods = session.availableFoods
         .filter((food) => session.foodCounts[food.name] > 0)
         .sort(
@@ -193,15 +226,13 @@ async function handleGameChoice(request) {
         );
 
       if (topFoods.length >= 4) {
-        // 상위 음식들 중에서 랜덤하게 2개 선택 (상위 6개 중에서)
+        // 상위 6개 중에서 랜덤하게 2개 선택
         const topCandidates = topFoods.slice(0, Math.min(6, topFoods.length));
         const shuffled = [...topCandidates].sort(() => 0.5 - Math.random());
         nextOptions = shuffled.slice(0, 2);
       } else if (topFoods.length >= 2) {
-        // 상위 음식이 적으면 그 중에서 선택
         nextOptions = topFoods.slice(0, 2);
       } else {
-        // 선택된 음식이 거의 없으면 전체에서 랜덤 선택
         const shuffled = [...session.availableFoods].sort(
           () => 0.5 - Math.random()
         );
