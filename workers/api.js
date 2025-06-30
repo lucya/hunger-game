@@ -412,7 +412,7 @@ async function handleReverseGeocode(url, env) {
 async function searchNaverLocal(query, latitude, longitude, radius, env) {
   const naverUrl = `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(
     query
-  )}&coordinate=${longitude},${latitude}&radius=${radius}&display=20&start=1&sort=distance`;
+  )}&coordinate=${longitude},${latitude}&radius=${radius}&display=20&start=1&sort=random`;
 
   const response = await fetch(naverUrl, {
     headers: {
@@ -422,10 +422,18 @@ async function searchNaverLocal(query, latitude, longitude, radius, env) {
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Naver Local API error: ${response.status}`, errorText);
     throw new Error(`Naver Local API error: ${response.status}`);
   }
 
   const data = await response.json();
+
+  // 에러 체크
+  if (data.errorCode) {
+    console.error(`Naver API error: ${data.errorCode} - ${data.errorMessage}`);
+    throw new Error(`Naver API error: ${data.errorMessage}`);
+  }
 
   return data.items.map((item) => ({
     title: removeHtmlTags(item.title),
