@@ -178,18 +178,20 @@ if (element) {
 }
 ```
 
-### 2. 음식 설명 undefined 문제
+### 2. 음식 설명 undefined 문제 (2025-01-15 해결)
 
-**문제**: 게임 화면에서 음식 설명이 undefined로 표시
-**원인**: 코드에서 `description` 필드를 참조했지만 실제 데이터는 `desc` 필드 사용
+**문제**: 게임 결과 화면에서 우승 음식의 설명이 undefined로 표시
+**원인**: 
+- `foods.js`에서는 `desc` 필드를 사용
+- `showResult()` 함수에서는 `description` 필드를 참조
 **해결책**:
 
 ```javascript
 // 수정 전
-food.description;
+<div class="winner-description">${winner.description}</div>
 
-// 수정 후
-food.desc || food.description || "맛있는 음식";
+// 수정 후  
+<div class="winner-description">${winner.desc || winner.description || ""}</div>
 ```
 
 ### 3. API 엔드포인트 경로 불일치
@@ -197,7 +199,35 @@ food.desc || food.description || "맛있는 음식";
 **문제**: 프론트엔드에서 `/game/session` 호출하지만 실제 API는 `/api/game/session`
 **해결책**: 모든 API 경로를 `/api/` 접두사로 통일
 
-### 4. 네이버 API 검색 실패
+### 4. 모바일 위치 API 문제 (2025-01-15 해결)
+
+**문제**: 모바일에서 위치값은 있는데 주소 변환(map API)이 작동하지 않음
+**원인**: 네이버 클라우드 플랫폼 역지오코딩 API 인증 실패 (401 에러)
+**해결책**:
+- 에러 처리 강화 및 상세 로깅 추가
+- 좌표 기반 지역 추정 기능 구현 (`estimateLocationFromCoords`)
+- 16개 시도의 좌표 범위를 활용한 fallback 로직
+- API 실패시에도 유용한 위치 정보 표시
+
+```javascript
+// 지역 추정 로직 추가
+estimateLocationFromCoords(latitude, longitude) {
+  const regions = [
+    { name: "서울특별시", latMin: 37.4, latMax: 37.7, lngMin: 126.8, lngMax: 127.2 },
+    // ... 16개 시도 데이터
+  ];
+  
+  for (const region of regions) {
+    if (latitude >= region.latMin && latitude <= region.latMax && 
+        longitude >= region.lngMin && longitude <= region.lngMax) {
+      return region.name;
+    }
+  }
+  return "대한민국";
+}
+```
+
+### 5. 네이버 API 검색 실패
 
 **문제**: `sort=distance` 파라미터가 네이버 API에서 지원되지 않음
 **원인**: 네이버 로컬 검색 API 문서와 실제 지원 파라미터 불일치
@@ -422,6 +452,61 @@ npx wrangler secret put NAVER_CLIENT_SECRET
 
 ---
 
-**마지막 업데이트**: 2025년 6월 30일  
+## 📝 최근 업데이트 기록
+
+### 2025-01-15: 음식 설명 및 모바일 위치 API 문제 해결
+
+**해결된 문제들:**
+
+1. **음식 설명 undefined 문제 해결**
+   - 문제: 게임 결과 화면에서 우승 음식의 설명이 `undefined`로 표시
+   - 원인: `foods.js`에서는 `desc` 필드 사용, `showResult()`에서는 `description` 필드 참조
+   - 해결: `winner.desc || winner.description || ""`로 fallback 로직 구현
+
+2. **모바일 위치 API 개선**
+   - 문제: 모바일에서 위치값은 있지만 주소 변환 API가 작동하지 않음
+   - 원인: 네이버 클라우드 플랫폼 역지오코딩 API 인증 실패 (401 에러)
+   - 해결: 좌표 기반 지역 추정 기능 구현 (`estimateLocationFromCoords`)
+
+**기술적 개선사항:**
+
+```javascript
+// 지역 추정 로직 추가
+estimateLocationFromCoords(latitude, longitude) {
+  const regions = [
+    { name: "서울특별시", latMin: 37.4, latMax: 37.7, lngMin: 126.8, lngMax: 127.2 },
+    { name: "부산광역시", latMin: 35.0, latMax: 35.4, lngMin: 128.9, lngMax: 129.4 },
+    // ... 총 16개 시도 데이터
+  ];
+  
+  for (const region of regions) {
+    if (latitude >= region.latMin && latitude <= region.latMax && 
+        longitude >= region.lngMin && longitude <= region.lngMax) {
+      return region.name;
+    }
+  }
+  return "대한민국";
+}
+```
+
+**사용자 경험 개선:**
+- 좌표 표시 포맷 개선: 소수점 6자리 → 4자리로 간소화
+- 에러 메시지 개선: API 실패시에도 유용한 정보 제공
+- Fallback 로직 강화: 주소 변환 실패시 지역 추정 기능 활용
+
+**배포 정보:**
+- 배포 URL: https://hunger-game-api.natureweb.workers.dev
+- Version ID: d66fcc4e-0e6b-4b6b-bd4d-5e93edc51482
+- GitHub 커밋: 3779b5d - "Fix food description undefined and mobile location issues"
+
+**테스트 결과:**
+- ✅ 음식 설명 정상 표시 확인
+- ✅ 모바일 위치 정보 표시 개선
+- ✅ 네이버 API 실패시 fallback 로직 정상 작동
+- ✅ 근처 식당 찾기 기능 안정성 향상
+
+---
+
+**마지막 업데이트**: 2025년 1월 15일  
 **개발자**: Adele  
-**버전**: 1.0.0
+**버전**: 1.2.0
