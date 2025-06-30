@@ -284,16 +284,18 @@ class FoodTournamentGame {
 
   // 근처 음식점 검색
   async searchNearbyRestaurants(latitude, longitude) {
-    if (!this.gameSession || !this.gameSession.winner) {
-      throw new Error("게임을 완료한 후 이용해주세요.");
+    let foodName = "맛집"; // 기본값
+
+    // 게임이 완료된 경우 승자 음식으로 검색, 아니면 일반 맛집 검색
+    if (this.gameSession && this.gameSession.winner) {
+      foodName = this.gameSession.winner.name;
     }
 
-    const winner = this.gameSession.winner;
     const radius = 1500; // 1.5km
 
     const response = await this.apiCall(
-      `/game/nearby-restaurants?foodName=${encodeURIComponent(
-        winner.name
+      `/api/game/nearby-restaurants?foodName=${encodeURIComponent(
+        foodName
       )}&latitude=${latitude}&longitude=${longitude}&radius=${radius}`
     );
 
@@ -309,7 +311,7 @@ class FoodTournamentGame {
     try {
       const coords = `${longitude},${latitude}`;
       const response = await this.apiCall(
-        `/naver/reverse-geocode?coords=${coords}&orders=roadaddr,addr`
+        `/api/naver/reverse-geocode?coords=${coords}&orders=roadaddr,addr`
       );
 
       if (
@@ -507,7 +509,11 @@ class FoodTournamentGame {
         option1Element.innerHTML = `
           <div class="food-emoji">${this.currentOptions[0].emoji}</div>
           <div class="food-name">${this.currentOptions[0].name}</div>
-          <div class="food-desc">${this.currentOptions[0].description}</div>
+          <div class="food-desc">${
+            this.currentOptions[0].desc ||
+            this.currentOptions[0].description ||
+            ""
+          }</div>
         `;
       }
 
@@ -515,7 +521,11 @@ class FoodTournamentGame {
         option2Element.innerHTML = `
           <div class="food-emoji">${this.currentOptions[1].emoji}</div>
           <div class="food-name">${this.currentOptions[1].name}</div>
-          <div class="food-desc">${this.currentOptions[1].description}</div>
+          <div class="food-desc">${
+            this.currentOptions[1].desc ||
+            this.currentOptions[1].description ||
+            ""
+          }</div>
         `;
       }
     }
