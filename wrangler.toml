@@ -5,8 +5,6 @@ compatibility_date = "2024-12-30"
 # 환경 변수 (개발용)
 [vars]
 ENVIRONMENT = "development"
-NAVER_CLIENT_ID = "udDZDimZnb4Z3twN1KGI"
-NAVER_CLIENT_SECRET = "p6iNP2KEmb"
 
 # 프로덕션 환경 설정
 [env.production]
@@ -14,9 +12,12 @@ name = "hunger-game-api"
 
 [env.production.vars]
 ENVIRONMENT = "production"
-NAVER_CLIENT_ID = "udDZDimZnb4Z3twN1KGI"
-NAVER_CLIENT_SECRET = "p6iNP2KEmb"
 
-# 프로덕션용 네이버 API 키는 secrets로 관리
+# API 키는 보안을 위해 secrets로 관리합니다
+# 개발 환경 설정:
+# wrangler secret put NAVER_CLIENT_ID
+# wrangler secret put NAVER_CLIENT_SECRET
+#
+# 프로덕션 환경 설정:
 # wrangler secret put NAVER_CLIENT_ID --env production
 # wrangler secret put NAVER_CLIENT_SECRET --env production 
