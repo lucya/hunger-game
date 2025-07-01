@@ -298,10 +298,16 @@ class FoodTournamentGame {
 
     const radius = 1500; // 1.5km
 
+    // URL 파라미터를 안전하게 인코딩
+    const params = new URLSearchParams({
+      foodName: foodName,
+      latitude: latitude.toString(),
+      longitude: longitude.toString(),
+      radius: radius.toString(),
+    });
+
     const response = await this.apiCall(
-      `/api/game/nearby-restaurants?foodName=${encodeURIComponent(
-        foodName
-      )}&latitude=${latitude}&longitude=${longitude}&radius=${radius}`
+      `/api/game/nearby-restaurants?${params.toString()}`
     );
 
     if (!response.success) {
@@ -395,6 +401,148 @@ class FoodTournamentGame {
         lngMin: 129.1,
         lngMax: 129.5,
       },
+      // 경기도 주요 도시들을 세분화
+      {
+        name: "수원시",
+        latMin: 37.23,
+        latMax: 37.32,
+        lngMin: 126.94,
+        lngMax: 127.08,
+      },
+      {
+        name: "성남시",
+        latMin: 37.38,
+        latMax: 37.47,
+        lngMin: 127.09,
+        lngMax: 127.18,
+      },
+      {
+        name: "고양시",
+        latMin: 37.63,
+        latMax: 37.7,
+        lngMin: 126.82,
+        lngMax: 126.88,
+      },
+      {
+        name: "용인시",
+        latMin: 37.23,
+        latMax: 37.32,
+        lngMin: 127.15,
+        lngMax: 127.32,
+      },
+      {
+        name: "부천시",
+        latMin: 37.48,
+        latMax: 37.54,
+        lngMin: 126.76,
+        lngMax: 126.81,
+      },
+      {
+        name: "안산시",
+        latMin: 37.3,
+        latMax: 37.35,
+        lngMin: 126.78,
+        lngMax: 126.87,
+      },
+      {
+        name: "안양시",
+        latMin: 37.38,
+        latMax: 37.41,
+        lngMin: 126.91,
+        lngMax: 126.96,
+      },
+      {
+        name: "남양주시",
+        latMin: 37.63,
+        latMax: 37.66,
+        lngMin: 127.2,
+        lngMax: 127.26,
+      },
+      {
+        name: "화성시",
+        latMin: 37.18,
+        latMax: 37.25,
+        lngMin: 126.81,
+        lngMax: 126.88,
+      },
+      {
+        name: "평택시",
+        latMin: 36.98,
+        latMax: 37.05,
+        lngMin: 127.08,
+        lngMax: 127.15,
+      },
+      {
+        name: "의정부시",
+        latMin: 37.73,
+        latMax: 37.76,
+        lngMin: 127.03,
+        lngMax: 127.07,
+      },
+      {
+        name: "시흥시",
+        latMin: 37.37,
+        latMax: 37.42,
+        lngMin: 126.78,
+        lngMax: 126.83,
+      },
+      {
+        name: "파주시",
+        latMin: 37.75,
+        latMax: 37.8,
+        lngMin: 126.77,
+        lngMax: 126.82,
+      },
+      {
+        name: "김포시",
+        latMin: 37.61,
+        latMax: 37.65,
+        lngMin: 126.71,
+        lngMax: 126.76,
+      },
+      {
+        name: "광명시",
+        latMin: 37.47,
+        latMax: 37.5,
+        lngMin: 126.86,
+        lngMax: 126.89,
+      },
+      {
+        name: "광주시",
+        latMin: 37.4,
+        latMax: 37.43,
+        lngMin: 127.25,
+        lngMax: 127.28,
+      },
+      {
+        name: "군포시",
+        latMin: 37.35,
+        latMax: 37.38,
+        lngMin: 126.93,
+        lngMax: 126.96,
+      },
+      {
+        name: "하남시",
+        latMin: 37.53,
+        latMax: 37.56,
+        lngMin: 127.2,
+        lngMax: 127.23,
+      },
+      {
+        name: "오산시",
+        latMin: 37.14,
+        latMax: 37.17,
+        lngMin: 127.07,
+        lngMax: 127.1,
+      },
+      {
+        name: "이천시",
+        latMin: 37.26,
+        latMax: 37.29,
+        lngMin: 127.43,
+        lngMax: 127.46,
+      },
+      // 나머지 경기도 지역
       {
         name: "경기도",
         latMin: 36.8,
